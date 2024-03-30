@@ -5,7 +5,8 @@
 #include "HaglUtility.h"
 
 hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
-	: _windowSystem(windowSystem)
+	: _windowSystem(windowSystem),
+	_queueIndices()
 {
 }
 
@@ -73,6 +74,54 @@ void hagl::RenderSystem::createVkInstance() {
 	);
 
 	_vkInstance = vk::createInstance(appCreateInfo);
+}
+
+void hagl::RenderSystem::createSwapchain() {
+	SwapchainSupportDetails details = {
+			_physicalDevice.getSurfaceCapabilitiesKHR(_surface),
+			_physicalDevice.getSurfaceFormatsKHR(_surface),
+			_physicalDevice.getSurfacePresentModesKHR(_surface)
+	};
+
+	vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(details.formats);
+	vk::PresentModeKHR presentMode = chooseSwapPresentMode(details.presentModes);
+	vk::Extent2D extent = chooseSwapExtent(_windowSystem, details.capabilities);
+	uint32_t imageCount = details.capabilities.minImageCount + 1;
+
+	imageCount = imageCount < details.capabilities.maxImageCount
+		? imageCount
+		: details.capabilities.maxImageCount;
+
+	vk::SharingMode sharingMode = _queueIndices.graphicsFamily != _queueIndices.presentFamily
+		? vk::SharingMode::eConcurrent
+		: vk::SharingMode::eExclusive;
+
+	uint32_t queueFamilyIndices[] = {
+		_queueIndices.graphicsFamily,
+		_queueIndices.presentFamily
+	};
+
+	vk::SwapchainCreateInfoKHR createInfo(
+		{} // flags
+		, _surface
+		, imageCount // minImageCount
+		, surfaceFormat.format
+		, surfaceFormat.colorSpace
+		, extent
+		, 1 // imageArrayLayers
+		, vk::ImageUsageFlagBits::eColorAttachment
+		, sharingMode
+		, queueFamilyIndices
+		, details.capabilities.currentTransform // preTransform
+		, vk::CompositeAlphaFlagBitsKHR::eOpaque
+		, presentMode
+		, true // clipped
+		, VK_NULL_HANDLE); // Old swapchain
+
+	_swapchain = _device.createSwapchainKHR(createInfo);
+	_images = _device.getSwapchainImagesKHR(_swapchain);
+	_swapchainExtent = extent;
+	_swapchainFormat = surfaceFormat.format;
 }
 
 hagl::RenderSystem::QueueFamilyIndices hagl::RenderSystem::findQueueFamilies(const vk::PhysicalDevice& device) {
@@ -217,4 +266,57 @@ void hagl::RenderSystem::createLogicalDevice() {
 	_device = _physicalDevice.createDevice(deviceCreateInfo);
 	_graphicsQueue = _device.getQueue(_queueIndices.graphicsFamily, 0);
 	_presentQueue = _device.getQueue(_queueIndices.presentFamily, 0);
+}
+
+static vk::SurfaceFormatKHR hagl::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> formats) {
+
+	for (auto format : formats) {
+		if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+			return format;
+		}
+	}
+
+	return formats[0];
+}
+
+static vk::PresentModeKHR hagl::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> presentModes) {	
+	for (auto mode : presentModes) {
+		if (mode == vk::PresentModeKHR::eMailbox) {
+			return mode;
+		}
+	}
+
+	return vk::PresentModeKHR::eFifo;
+}
+
+static vk::Extent2D hagl::chooseSwapExtent(const hagl::WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities) {
+	if (capabilities.currentExtent.width != UINT32_MAX) {
+		return capabilities.currentExtent;
+	} else {
+		uint32_t width, height;
+		windowSystem.getVulkanFramebufferSize(width, height);
+
+		VkExtent2D actualExtent = {
+			width,
+			height
+		};
+
+		actualExtent.width = actualExtent.width > capabilities.minImageExtent.width
+			? actualExtent.width
+			: capabilities.minImageExtent.width;
+
+		actualExtent.width = actualExtent.width < capabilities.maxImageExtent.width
+			? actualExtent.width
+			: capabilities.maxImageExtent.width;
+
+		actualExtent.height = actualExtent.height > capabilities.minImageExtent.height
+			? actualExtent.height
+			: capabilities.minImageExtent.height;
+
+		actualExtent.width = actualExtent.width < capabilities.maxImageExtent.width
+			? actualExtent.width
+			: capabilities.maxImageExtent.width;
+
+		return actualExtent;
+	}
 }

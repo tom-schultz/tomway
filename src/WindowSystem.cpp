@@ -44,3 +44,15 @@ void hagl::WindowSystem::handle_events() {
 		}
 	}
 }
+
+void hagl::WindowSystem::getVulkanFramebufferSize(uint32_t& width, uint32_t& height) const {
+	int w, h;
+	SDL_Vulkan_GetDrawableSize(_window, &w, &h);
+
+	if (w == NULL || w < 1 || h == NULL || h < 1) {
+		throw new std::runtime_error("Framebuffer size invalid.");
+	}
+
+	width = (uint32_t) w;
+	height = (uint32_t) h;
+}

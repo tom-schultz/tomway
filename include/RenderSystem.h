@@ -42,10 +42,15 @@ namespace hagl {
 		vk::Queue _graphicsQueue;
 		vk::Queue _presentQueue;
 		std::vector<const char*> _validationLayers = { VALIDATION_LAYERS };
+		vk::SwapchainKHR _swapchain;
+		std::vector<vk::Image> _images;
+		vk::Extent2D _swapchainExtent;
+		vk::Format _swapchainFormat;
 
 		void createVkInstance();
 		void pickPhysicalDevice();
 		void createLogicalDevice();
+		void createSwapchain();
 		QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice& device);
 		bool isDeviceSuitable(const vk::PhysicalDevice& device, const QueueFamilyIndices& indices);
 		bool isQueueFamilyComplete(QueueFamilyIndices deviceIndices);
@@ -53,4 +58,8 @@ namespace hagl {
 		bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device);
 		bool checkValidationLayerSupport();
 	};
+
+	static vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> formats);
+	static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> modes);
+	static vk::Extent2D chooseSwapExtent(const WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities);
 }
