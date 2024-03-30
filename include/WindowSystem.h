@@ -1,0 +1,23 @@
+#pragma once
+
+#include "SDL.h"
+#include "SDL_vulkan.h"
+#include <vector>
+#include "vulkan/vulkan.hpp"
+
+namespace hagl {
+	class WindowSystem
+	{
+	public:
+		WindowSystem(unsigned width, unsigned height);
+		void init();
+		std::vector<const char*> getExtensions() const;
+		void handle_events();
+		void createVulkanSurface(vk::Instance instance, VkSurfaceKHR& surface);
+	private:
+		SDL_Window* _window = NULL;
+		SDL_Surface* _windowSurface = NULL;
+		unsigned  _windowWidth;
+		unsigned _windowHeight;
+	};
+}
