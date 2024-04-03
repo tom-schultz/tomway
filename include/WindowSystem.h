@@ -13,7 +13,7 @@ namespace hagl {
 		void init();
 		std::vector<const char*> getExtensions() const;
 		void handle_events();
-		void createVulkanSurface(vk::Instance instance, VkSurfaceKHR& surface);
+		vk::UniqueSurfaceKHR createVulkanSurface(const vk::Instance& instance);
 		void getVulkanFramebufferSize(uint32_t& width, uint32_t& height) const;
 	private:
 		SDL_Window* _window = NULL;

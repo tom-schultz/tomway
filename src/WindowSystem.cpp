@@ -21,8 +21,10 @@ void hagl::WindowSystem::init() {
 	LOG_INFO("Window system initialized.");
 }
 
-void hagl::WindowSystem::createVulkanSurface(vk::Instance instance, VkSurfaceKHR& surface) {
+vk::UniqueSurfaceKHR hagl::WindowSystem::createVulkanSurface(const vk::Instance& instance) {
+	VkSurfaceKHR surface;
 	SDL_Vulkan_CreateSurface(_window, instance, &surface);
+	return vk::UniqueSurfaceKHR(surface);
 }
 
 std::vector<const char*> hagl::WindowSystem::getExtensions() const {

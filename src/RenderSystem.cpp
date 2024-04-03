@@ -11,17 +11,17 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
 }
 
 hagl::RenderSystem::~RenderSystem() {
-
 }
 
 void hagl::RenderSystem::init() {
 	try {
 		createVkInstance();
 
-		VkSurfaceKHR cSurface;
-		_windowSystem.createVulkanSurface(_vkInstance, cSurface);
-		_surface = vk::SurfaceKHR(cSurface);
+		_surface = _windowSystem.createVulkanSurface(*_vkInstance);
 		pickPhysicalDevice();
+		createLogicalDevice();
+		createSwapchain();
+		createImageViews();
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize Vulkan with error: %s", e.what());
@@ -33,7 +33,7 @@ void hagl::RenderSystem::init() {
 
 void hagl::RenderSystem::pickPhysicalDevice() {
 	uint32_t deviceCount = 0;
-	auto devices = _vkInstance.enumeratePhysicalDevices();
+	auto devices = _vkInstance->enumeratePhysicalDevices();
 
 	if (devices.size() == 0) {
 		throw std::runtime_error("Failed to find a GPU with Vulkan support!");
@@ -62,25 +62,25 @@ void hagl::RenderSystem::createVkInstance() {
 				VK_API_VERSION_1_3 // API Version
 			);
 
-	_requiredExtensions = _windowSystem.getExtensions();
+	auto requiredInstanceExtensions = _windowSystem.getExtensions();
 
 	vk::InstanceCreateInfo appCreateInfo(
 		{}, // flags
 		&info, // Application Info
 		(uint32_t) _validationLayers.size(), // Enable layer count
 		_validationLayers.data(), // Enabled layer names
-		(uint32_t) _requiredExtensions.size(), // Extension count
-		_requiredExtensions.data() // Extension names
+		(uint32_t)requiredInstanceExtensions.size(), // Extension count
+		requiredInstanceExtensions.data() // Extension names
 	);
 
-	_vkInstance = vk::createInstance(appCreateInfo);
+	_vkInstance = vk::createInstanceUnique(appCreateInfo);
 }
 
 void hagl::RenderSystem::createSwapchain() {
 	SwapchainSupportDetails details = {
-			_physicalDevice.getSurfaceCapabilitiesKHR(_surface),
-			_physicalDevice.getSurfaceFormatsKHR(_surface),
-			_physicalDevice.getSurfacePresentModesKHR(_surface)
+			_physicalDevice.getSurfaceCapabilitiesKHR(*_surface),
+			_physicalDevice.getSurfaceFormatsKHR(*_surface),
+			_physicalDevice.getSurfacePresentModesKHR(*_surface)
 	};
 
 	vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(details.formats);
@@ -103,7 +103,7 @@ void hagl::RenderSystem::createSwapchain() {
 
 	vk::SwapchainCreateInfoKHR createInfo(
 		{} // flags
-		, _surface
+		, *_surface
 		, imageCount // minImageCount
 		, surfaceFormat.format
 		, surfaceFormat.colorSpace
@@ -118,10 +118,44 @@ void hagl::RenderSystem::createSwapchain() {
 		, true // clipped
 		, VK_NULL_HANDLE); // Old swapchain
 
-	_swapchain = _device.createSwapchainKHR(createInfo);
-	_images = _device.getSwapchainImagesKHR(_swapchain);
+	_swapchain = _device->createSwapchainKHRUnique(createInfo);
+	_images = _device->getSwapchainImagesKHR(*_swapchain);
 	_swapchainExtent = extent;
 	_swapchainFormat = surfaceFormat.format;
+}
+
+void hagl::RenderSystem::createImageViews() {
+	for (auto image : _images) {
+		_imageViews.push_back(createImageView(_device.get(), image, _swapchainFormat, vk::ImageAspectFlagBits::eColor, 1));
+	}
+}
+
+static vk::UniqueImageView hagl::createImageView(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspectMask, uint32_t mipLevels) {
+	vk::ComponentMapping components(
+		vk::ComponentSwizzle::eIdentity,
+		vk::ComponentSwizzle::eIdentity,
+		vk::ComponentSwizzle::eIdentity,
+		vk::ComponentSwizzle::eIdentity
+	);
+
+	vk::ImageSubresourceRange subresource(
+		aspectMask,
+		0, // Base mip level
+		mipLevels,
+		0, // Base array layer
+		1 // Layer count
+	);
+
+	vk::ImageViewCreateInfo createInfo(
+		{}, // Flags
+		image,
+		vk::ImageViewType::e2D, // Image view type
+		format,
+		components,
+		subresource
+	);
+
+	return device.createImageViewUnique(createInfo);
 }
 
 hagl::RenderSystem::QueueFamilyIndices hagl::RenderSystem::findQueueFamilies(const vk::PhysicalDevice& device) {
@@ -134,7 +168,7 @@ hagl::RenderSystem::QueueFamilyIndices hagl::RenderSystem::findQueueFamilies(con
 			deviceIndices.graphicsAvail = true;
 		}
 
-		if (device.getSurfaceSupportKHR(i, _surface)) {
+		if (device.getSurfaceSupportKHR(i, *_surface)) {
 			deviceIndices.presentFamily = i;
 			deviceIndices.presentAvail = true;
 		}
@@ -145,12 +179,17 @@ hagl::RenderSystem::QueueFamilyIndices hagl::RenderSystem::findQueueFamilies(con
 
 bool hagl::RenderSystem::checkDeviceExtensionSupport(const vk::PhysicalDevice& device) {
 	auto deviceExtensions = device.enumerateDeviceExtensionProperties();
+	std::vector<std::string> supported;
 
-	for (auto reqExtension : _requiredExtensions) {
+	for (auto ext : deviceExtensions) {
+		supported.push_back(std::string((char*)ext.extensionName));
+	}
+	
+	for (auto reqExtension : _requiredDeviceExtensions) {
 		bool found = false;
 
 		for (auto devExtension : deviceExtensions) {
-			found = found || strcmp(devExtension.extensionName, reqExtension);
+			found = found || strcmp(devExtension.extensionName, reqExtension) == 0;
 		}
 
 		if (!found) {
@@ -188,9 +227,9 @@ bool hagl::RenderSystem::isDeviceSuitable(const vk::PhysicalDevice& device, cons
 
 	if (extensionsSupported) {
 		SwapchainSupportDetails details = {
-			device.getSurfaceCapabilitiesKHR(_surface),
-			device.getSurfaceFormatsKHR(_surface),
-			device.getSurfacePresentModesKHR(_surface)
+			device.getSurfaceCapabilitiesKHR(*_surface),
+			device.getSurfaceFormatsKHR(*_surface),
+			device.getSurfacePresentModesKHR(*_surface)
 		};
 
 		swapchainAdequate = details.formats.size() > 0 && details.presentModes.size() > 0;
@@ -233,9 +272,6 @@ void hagl::RenderSystem::createLogicalDevice() {
 	if (_validationLayers.size() > 0 && !checkValidationLayerSupport()) {
 		throw new std::runtime_error("Requested validation layers not available!");
 	}
-	else {
-		LOG_INFO("Validation layers available!\n");
-	}
 
 	vk::PhysicalDeviceFeatures deviceFeatures {};
 	deviceFeatures.samplerAnisotropy = true;
@@ -259,13 +295,13 @@ void hagl::RenderSystem::createLogicalDevice() {
 		{}, // Flags
 		(uint32_t) createInfos.size(), createInfos.data(), // Queue create infos
 		(uint32_t) _validationLayers.size(), _validationLayers.data(), // Enabled layers
-		(uint32_t) _requiredExtensions.size(), _requiredExtensions.data(), // Extensions
+		(uint32_t) _requiredDeviceExtensions.size(), _requiredDeviceExtensions.data(), // Extensions
 		&deviceFeatures, // Device features
 		NULL); // pNext
 
-	_device = _physicalDevice.createDevice(deviceCreateInfo);
-	_graphicsQueue = _device.getQueue(_queueIndices.graphicsFamily, 0);
-	_presentQueue = _device.getQueue(_queueIndices.presentFamily, 0);
+	_device = _physicalDevice.createDeviceUnique(deviceCreateInfo);
+	_graphicsQueue = _device->getQueue(_queueIndices.graphicsFamily, 0);
+	_presentQueue = _device->getQueue(_queueIndices.presentFamily, 0);
 }
 
 static vk::SurfaceFormatKHR hagl::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> formats) {
