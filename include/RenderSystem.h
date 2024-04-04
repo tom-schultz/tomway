@@ -38,9 +38,10 @@ namespace hagl {
 		*/
 		
 		vk::UniqueInstance _vkInstance;
-		vk::UniqueSurfaceKHR _surface;
 		vk::UniqueDevice _device;
+		vk::UniqueSurfaceKHR _surface;
 		vk::UniqueSwapchainKHR _swapchain;
+		vk::UniqueRenderPass _renderPass;
 
 		/*
 		########  STRICT ORDERING SECTION END
@@ -73,8 +74,10 @@ namespace hagl {
 		bool checkValidationLayerSupport();
 	};
 
+	static vk::UniqueRenderPass createRenderPass(const vk::PhysicalDevice& physicalDevice, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples);
 	static vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> formats);
 	static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> modes);
 	static vk::Extent2D chooseSwapExtent(const WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities);
 	static vk::UniqueImageView createImageView(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspectMask, uint32_t mipLevels);
+	static vk::Format findDepthFormat(const vk::PhysicalDevice& physicalDevice);
 }

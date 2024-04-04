@@ -22,6 +22,7 @@ void hagl::RenderSystem::init() {
 		createLogicalDevice();
 		createSwapchain();
 		createImageViews();
+		createRenderPass(_physicalDevice, *_device, _swapchainFormat, _msaaSamples);
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize Vulkan with error: %s", e.what());
@@ -51,6 +52,94 @@ void hagl::RenderSystem::pickPhysicalDevice() {
 	}
 
 	throw new std::runtime_error("Could not find a suitable GPU!");
+}
+
+vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDevice, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples) {
+	vk::AttachmentDescription colorAttachment(
+		{}, // Flags
+		format, // Format
+		samples, // Sample count
+		vk::AttachmentLoadOp::eClear, // Load op
+		vk::AttachmentStoreOp::eStore, // Store op
+		vk::AttachmentLoadOp::eDontCare, // Stencil load op
+		vk::AttachmentStoreOp::eDontCare, // Stencil store op
+		vk::ImageLayout::eUndefined, // Initial layout
+		vk::ImageLayout::eColorAttachmentOptimal // Final layout
+	);
+
+	vk::AttachmentReference colorAttachmentRef(
+		0, // Attachment
+		vk::ImageLayout::eColorAttachmentOptimal
+	);
+
+	vk::AttachmentDescription resolveAttachment(
+		{}, // Flags
+		format, // Format
+		vk::SampleCountFlagBits::e1, // Sample count
+		vk::AttachmentLoadOp::eDontCare, // Load op
+		vk::AttachmentStoreOp::eStore, // Store op
+		vk::AttachmentLoadOp::eDontCare, // Stencil load op
+		vk::AttachmentStoreOp::eDontCare, // Stencil store op
+		vk::ImageLayout::eUndefined, // Initial layout
+		vk::ImageLayout::ePresentSrcKHR // Final layout
+	);
+
+	vk::AttachmentReference resolveAttachmentRef(
+		1, // Attachment
+		vk::ImageLayout::eColorAttachmentOptimal
+	);
+
+	vk::AttachmentDescription depthAttachment(
+		{}, // Flags
+		hagl::findDepthFormat(physicalDevice), // Format
+		samples, // Sample count
+		vk::AttachmentLoadOp::eClear, // Load op
+		vk::AttachmentStoreOp::eStore, // Store op
+		vk::AttachmentLoadOp::eDontCare, // Stencil load op
+		vk::AttachmentStoreOp::eDontCare, // Stencil store op
+		vk::ImageLayout::eUndefined, // Initial layout
+		vk::ImageLayout::eDepthStencilAttachmentOptimal // Final layout
+	);
+
+	vk::AttachmentReference depthAttachmentRef(
+		2, // Attachment
+		vk::ImageLayout::eDepthStencilAttachmentOptimal
+	);
+
+	vk::SubpassDescription subpass(
+		{}, // Flags
+		vk::PipelineBindPoint::eGraphics,
+		nullptr, // Input attachments
+		colorAttachmentRef, // Color attachment refs
+		resolveAttachmentRef, // Resolve attachment refs
+		&depthAttachmentRef, // Depth attachment ref, ptr for some reason...
+		nullptr // Preserve attachments
+	);
+
+	vk::SubpassDependency dependency(
+		VK_SUBPASS_EXTERNAL, // Source subpass
+		0, // Dest subpass
+		vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eLateFragmentTests, // Source stage mask
+		vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests, // Dest stage mask
+		vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite, // Source access mask
+		vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite, // Dest access mask
+		{} // Dependency flags
+	);
+
+	vk::AttachmentDescription attachments[]{
+		colorAttachment,
+		resolveAttachment,
+		depthAttachment,
+	};
+
+	vk::RenderPassCreateInfo createInfo(
+		{}, // Flags
+		attachments,
+		subpass,
+		dependency
+	);
+
+	return device.createRenderPassUnique(createInfo);
 }
 
 void hagl::RenderSystem::createVkInstance() {
@@ -216,6 +305,34 @@ bool hagl::RenderSystem::checkValidationLayerSupport() {
 	}
 
 	return true;
+}
+
+vk::Format hagl::findDepthFormat(const vk::PhysicalDevice& physicalDevice) {
+	std::vector<vk::Format> formats = {
+		vk::Format::eD32Sfloat,
+		vk::Format::eD32SfloatS8Uint,
+		vk::Format::eD24UnormS8Uint
+	};
+
+	vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
+	vk::FormatFeatureFlags features = vk::FormatFeatureFlagBits::eDepthStencilAttachment;
+	vk::FormatProperties props;
+
+	for (auto format : formats) {
+		props = physicalDevice.getFormatProperties(format);
+
+		bool hasLinear = (tiling == vk::ImageTiling::eLinear
+			&& (props.linearTilingFeatures & features) == features);
+
+		bool hasOptimal = (tiling == vk::ImageTiling::eOptimal
+			&& (props.optimalTilingFeatures & features) == features);
+
+		if (hasLinear || hasOptimal) {
+			return format;
+		}
+	}
+
+	throw new std::runtime_error("Failed to find supported device format.\n");
 }
 
 bool hagl::RenderSystem::isDeviceSuitable(const vk::PhysicalDevice& device, const QueueFamilyIndices& indices) {
