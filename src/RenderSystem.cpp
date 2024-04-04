@@ -6,14 +6,9 @@
 
 hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
 	: _windowSystem(windowSystem),
-	_queueIndices()
+	_queueIndices(),
+	_swapchainFormat()
 {
-}
-
-hagl::RenderSystem::~RenderSystem() {
-}
-
-void hagl::RenderSystem::init() {
 	try {
 		createVkInstance();
 
@@ -25,11 +20,14 @@ void hagl::RenderSystem::init() {
 		createRenderPass(_physicalDevice, *_device, _swapchainFormat, _msaaSamples);
 	}
 	catch (std::exception e) {
-		LOG_ERROR(0, "Failed to initialize Vulkan with error: %s", e.what());
+		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
 		exit(1);
 	}
 
 	LOG_INFO("Render system initialized.");
+}
+
+hagl::RenderSystem::~RenderSystem() {
 }
 
 void hagl::RenderSystem::pickPhysicalDevice() {
@@ -41,12 +39,11 @@ void hagl::RenderSystem::pickPhysicalDevice() {
 	}
 	
 	for (auto device : devices) {
-		QueueFamilyIndices deviceIndices = findQueueFamilies(device);
 
-		if (isDeviceSuitable(device, deviceIndices)) {
+		if (isDeviceSuitable(device, *_surface, _requiredDeviceExtensions)) {
 			_physicalDevice = device;
-			_msaaSamples = getMaxUsableSampleCount();
-			_queueIndices = deviceIndices;
+			_msaaSamples = getMaxUsableSampleCount(device);
+			_queueIndices = findQueueFamilies(device, *_surface);
 			return;
 		}
 	}
@@ -247,7 +244,7 @@ static vk::UniqueImageView hagl::createImageView(const vk::Device& device, const
 	return device.createImageViewUnique(createInfo);
 }
 
-hagl::RenderSystem::QueueFamilyIndices hagl::RenderSystem::findQueueFamilies(const vk::PhysicalDevice& device) {
+static hagl::QueueFamilyIndices hagl::findQueueFamilies(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface)  {
 	QueueFamilyIndices deviceIndices{};
 	auto queueFamilyProperties = device.getQueueFamilyProperties();
 
@@ -257,7 +254,7 @@ hagl::RenderSystem::QueueFamilyIndices hagl::RenderSystem::findQueueFamilies(con
 			deviceIndices.graphicsAvail = true;
 		}
 
-		if (device.getSurfaceSupportKHR(i, *_surface)) {
+		if (device.getSurfaceSupportKHR(i, surface)) {
 			deviceIndices.presentFamily = i;
 			deviceIndices.presentAvail = true;
 		}
@@ -266,7 +263,7 @@ hagl::RenderSystem::QueueFamilyIndices hagl::RenderSystem::findQueueFamilies(con
 	return deviceIndices;
 }
 
-bool hagl::RenderSystem::checkDeviceExtensionSupport(const vk::PhysicalDevice& device) {
+static bool hagl::checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions) {
 	auto deviceExtensions = device.enumerateDeviceExtensionProperties();
 	std::vector<std::string> supported;
 
@@ -274,7 +271,7 @@ bool hagl::RenderSystem::checkDeviceExtensionSupport(const vk::PhysicalDevice& d
 		supported.push_back(std::string((char*)ext.extensionName));
 	}
 	
-	for (auto reqExtension : _requiredDeviceExtensions) {
+	for (auto reqExtension : requiredDeviceExtensions) {
 		bool found = false;
 
 		for (auto devExtension : deviceExtensions) {
@@ -289,10 +286,10 @@ bool hagl::RenderSystem::checkDeviceExtensionSupport(const vk::PhysicalDevice& d
 	return true;
 }
 
-bool hagl::RenderSystem::checkValidationLayerSupport() {
+static bool hagl::checkValidationLayerSupport(const std::vector<const char*>& validationLayers) {
 	auto supportedLayers = vk::enumerateInstanceLayerProperties();
 
-	for (auto reqLayer : _validationLayers) {
+	for (auto reqLayer : validationLayers) {
 		bool found = false;
 
 		for (auto supportedLayer : supportedLayers) {
@@ -335,18 +332,19 @@ vk::Format hagl::findDepthFormat(const vk::PhysicalDevice& physicalDevice) {
 	throw new std::runtime_error("Failed to find supported device format.\n");
 }
 
-bool hagl::RenderSystem::isDeviceSuitable(const vk::PhysicalDevice& device, const QueueFamilyIndices& indices) {
+static bool hagl::isDeviceSuitable(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface, const std::vector<const char*>& requiredDeviceExtensions) {
+	QueueFamilyIndices deviceIndices = hagl::findQueueFamilies(device, surface);
 	auto deviceProperties = device.getProperties();
 	auto deviceFeatures = device.getFeatures();
 
-	bool extensionsSupported = checkDeviceExtensionSupport(device);
+	bool extensionsSupported = hagl::checkDeviceExtensionSupport(device, requiredDeviceExtensions);
 	bool swapchainAdequate = false;
 
 	if (extensionsSupported) {
-		SwapchainSupportDetails details = {
-			device.getSurfaceCapabilitiesKHR(*_surface),
-			device.getSurfaceFormatsKHR(*_surface),
-			device.getSurfacePresentModesKHR(*_surface)
+		hagl::SwapchainSupportDetails details = {
+			device.getSurfaceCapabilitiesKHR(surface),
+			device.getSurfaceFormatsKHR(surface),
+			device.getSurfacePresentModesKHR(surface)
 		};
 
 		swapchainAdequate = details.formats.size() > 0 && details.presentModes.size() > 0;
@@ -357,14 +355,14 @@ bool hagl::RenderSystem::isDeviceSuitable(const vk::PhysicalDevice& device, cons
 			|| deviceProperties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu)
 		&& deviceFeatures.geometryShader
 		&& deviceFeatures.samplerAnisotropy
-		&& isQueueFamilyComplete(indices)
+		&& hagl::isQueueFamilyComplete(deviceIndices)
 		&& extensionsSupported
 		&& swapchainAdequate
 	);
 }
 
-vk::SampleCountFlagBits hagl::RenderSystem::getMaxUsableSampleCount() {
-	auto physicalDeviceProperties = _physicalDevice.getProperties();
+static vk::SampleCountFlagBits hagl::getMaxUsableSampleCount(const vk::PhysicalDevice& physicalDevice) {
+	auto physicalDeviceProperties = physicalDevice.getProperties();
 
 	vk::SampleCountFlags counts = (
 		physicalDeviceProperties.limits.framebufferColorSampleCounts
@@ -381,12 +379,12 @@ vk::SampleCountFlagBits hagl::RenderSystem::getMaxUsableSampleCount() {
 	return vk::SampleCountFlagBits::e1;
 }
 
-bool hagl::RenderSystem::isQueueFamilyComplete(QueueFamilyIndices indices) {
+static bool hagl::isQueueFamilyComplete(const hagl::QueueFamilyIndices& indices) {
 	return indices.graphicsAvail && indices.presentAvail;
 }
 
 void hagl::RenderSystem::createLogicalDevice() {
-	if (_validationLayers.size() > 0 && !checkValidationLayerSupport()) {
+	if (_validationLayers.size() > 0 && !checkValidationLayerSupport(_validationLayers)) {
 		throw new std::runtime_error("Requested validation layers not available!");
 	}
 

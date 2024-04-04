@@ -2,11 +2,10 @@
 #include <iostream>
 #include "HaglConstants.h"
 
-hagl::WindowSystem::WindowSystem(unsigned width, unsigned height) : _windowWidth(width), _windowHeight(height) {
-
-}
-
-void hagl::WindowSystem::init() {
+hagl::WindowSystem::WindowSystem(unsigned width, unsigned height)
+	: _windowWidth(width),
+	_windowHeight(height)
+{
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
 		LOG_ERROR(0, "Could not initialize SDL video with error: %s", SDL_GetError());
 		exit(1);

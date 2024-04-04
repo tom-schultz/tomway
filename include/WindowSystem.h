@@ -10,7 +10,6 @@ namespace hagl {
 	{
 	public:
 		WindowSystem(unsigned width, unsigned height);
-		void init();
 		std::vector<const char*> getExtensions() const;
 		void handle_events();
 		vk::UniqueSurfaceKHR createVulkanSurface(const vk::Instance& instance);
