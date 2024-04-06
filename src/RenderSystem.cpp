@@ -19,12 +19,12 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
 		createLogicalDevice();
 		createSwapchain();
 		createImageViews();
-		createRenderPass(_physicalDevice, *_uDevice, _swapchainFormat, _msaaSamples);
+		_uRenderPass = createRenderPass(_physicalDevice, *_uDevice, _swapchainFormat, _msaaSamples);
 		createGraphicsPipeline();
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
-		exit(1);
+		throw e;
 	}
 
 	LOG_INFO("Render system initialized.");
@@ -89,22 +89,22 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 		vk::ImageLayout::eColorAttachmentOptimal
 	);
 
-	vk::AttachmentDescription depthAttachment(
-		{}, // Flags
-		hagl::findDepthFormat(physicalDevice), // Format
-		samples, // Sample count
-		vk::AttachmentLoadOp::eClear, // Load op
-		vk::AttachmentStoreOp::eStore, // Store op
-		vk::AttachmentLoadOp::eDontCare, // Stencil load op
-		vk::AttachmentStoreOp::eDontCare, // Stencil store op
-		vk::ImageLayout::eUndefined, // Initial layout
-		vk::ImageLayout::eDepthStencilAttachmentOptimal // Final layout
-	);
+	//vk::AttachmentDescription depthAttachment(
+	//	{}, // Flags
+	//	hagl::findDepthFormat(physicalDevice), // Format
+	//	samples, // Sample count
+	//	vk::AttachmentLoadOp::eClear, // Load op
+	//	vk::AttachmentStoreOp::eStore, // Store op
+	//	vk::AttachmentLoadOp::eDontCare, // Stencil load op
+	//	vk::AttachmentStoreOp::eDontCare, // Stencil store op
+	//	vk::ImageLayout::eUndefined, // Initial layout
+	//	vk::ImageLayout::eDepthStencilAttachmentOptimal // Final layout
+	//);
 
-	vk::AttachmentReference depthAttachmentRef(
-		2, // Attachment
-		vk::ImageLayout::eDepthStencilAttachmentOptimal
-	);
+	//vk::AttachmentReference depthAttachmentRef(
+	//	2, // Attachment
+	//	vk::ImageLayout::eDepthStencilAttachmentOptimal
+	//);
 
 	vk::SubpassDescription subpass(
 		{}, // Flags
@@ -112,7 +112,8 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 		nullptr, // Input attachments
 		colorAttachmentRef, // Color attachment refs
 		resolveAttachmentRef, // Resolve attachment refs
-		&depthAttachmentRef, // Depth attachment ref, ptr for some reason...
+		nullptr,
+		//&depthAttachmentRef, // Depth attachment ref, ptr for some reason...
 		nullptr // Preserve attachments
 	);
 
@@ -129,7 +130,7 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 	vk::AttachmentDescription attachments[]{
 		colorAttachment,
 		resolveAttachment,
-		depthAttachment,
+		//depthAttachment,
 	};
 
 	vk::RenderPassCreateInfo createInfo(
@@ -147,13 +148,132 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 	std::vector<char> _fragShaderBytes = readShaderBytes("shaders/frag.spv");
 	std::vector<char> _vertShaderBytes = readShaderBytes("shaders/vert.spv");
 
-	_uFragShaderModule = createShaderModule(*_uDevice, _fragShaderBytes);
-	_uVertShaderModule = createShaderModule(*_uDevice, _vertShaderBytes);
+	vk::UniqueShaderModule uFragShaderModule = createShaderModule(*_uDevice, _fragShaderBytes);
+	vk::UniqueShaderModule uVertShaderModule = createShaderModule(*_uDevice, _vertShaderBytes);
 
-	vk::PipelineShaderStageCreateInfo fragStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, *_uFragShaderModule, "main");
-	vk::PipelineShaderStageCreateInfo vertStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, *_uVertShaderModule, "main");
+	vk::PipelineShaderStageCreateInfo fragStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, *uFragShaderModule, "main");
+	vk::PipelineShaderStageCreateInfo vertStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, *uVertShaderModule, "main");
 
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages{ fragStageCreateInfo, vertStageCreateInfo };
+
+	std::vector<vk::DynamicState> dynamicStates{
+		vk::DynamicState::eViewport,
+		vk::DynamicState::eScissor
+	};
+
+	vk::PipelineDynamicStateCreateInfo dynamicState({}, dynamicStates);
+
+	vk::PipelineInputAssemblyStateCreateInfo inputAssembly(
+		{}, // Flags
+		vk::PrimitiveTopology::eTriangleList, //Topology
+		vk::False); // Primitive restart
+
+	vk::PipelineViewportStateCreateInfo viewportState(
+		{}, // Flags
+		1, // Viewport count
+		nullptr, // Viewports, null here because we're setting them dynamically
+		1); // Scissor count
+
+	vk::PipelineRasterizationStateCreateInfo rasterizer(
+		{}, //Flags
+		vk::False, // Depth clamp enable
+		vk::False, // Rasterizer discard enable
+		vk::PolygonMode::eFill, // Polygon mode
+		vk::CullModeFlagBits::eBack, // Cull mode
+		vk::FrontFace::eCounterClockwise, // Front face
+		vk::False, // Depth bias enable
+		0.0f, // Depth bias constant factor
+		0.0f, // Depth bias clamp
+		0.0f, // Depth bias slope factor
+		1.0f); // Line width
+
+	vk::PipelineMultisampleStateCreateInfo multisampling(
+		{}, // Flags
+		_msaaSamples,
+		vk::False, // Sample shading enable
+		1.0f, // Min sample shading
+		nullptr, // Sample mask
+		vk::False, // Alpha to coverage enable
+		vk::False); // Alpha to one enable
+
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment(
+		vk::True, // Blend enable
+		vk::BlendFactor::eSrcAlpha, // Src color blend factor
+		vk::BlendFactor::eOneMinusSrcAlpha, // Dst color blend factor
+		vk::BlendOp::eAdd, // Color blend op
+		vk::BlendFactor::eOne, // Src alpha blend factor
+		vk::BlendFactor::eZero, // Dst alpha blend factor
+		vk::BlendOp::eAdd); // Alpha blend op
+
+	vk::PipelineColorBlendStateCreateInfo colorBlending(
+		{}, // Flags
+		vk::False, // Logic op enable
+		vk::LogicOp::eCopy, // Logic op
+		colorBlendAttachment, // Attachments
+		{ 0.0f, 0.0f, 0.0f, 0.0f }); // Blend constants
+
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfo(
+		{}, // Flags
+		nullptr, // Descriptor set layouts
+		nullptr); // Push constant ranges
+
+	_uPipelineLayout = _uDevice->createPipelineLayoutUnique(pipelineLayoutInfo);
+
+	// TODO - real vertex input descriptions
+	/*
+	// Vertex input descriptions
+	VkVertexInputBindingDescription bindingDesc = getBindingDescription();
+	VkVertexInputAttributeDescription* attributeDescDA = NULL;
+	uint32_t attributeDescCount = getAttributeDescription(&attributeDescDA);
+
+	// How we pass input to the vertex shader
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
+	vertexInputInfo.vertexAttributeDescriptionCount = attributeDescCount;
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescDA;
+	*/
+
+	vk::PipelineVertexInputStateCreateInfo vertexInputState({}, nullptr, nullptr);
+
+	// TODO - Depth stencil create info
+	/*
+	VkPipelineDepthStencilStateCreateInfo depthStencil = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.depthTestEnable = VK_TRUE,
+		.depthWriteEnable = VK_TRUE,
+		.depthCompareOp = VK_COMPARE_OP_LESS,
+		.depthBoundsTestEnable = VK_FALSE,
+		.minDepthBounds = 0.0f,
+		.maxDepthBounds = 1.0f,
+		.stencilTestEnable = VK_FALSE,
+		.front = {},
+		.back = {}
+	};
+	*/
+
+	vk::GraphicsPipelineCreateInfo pipelineCreateInfo(
+		{}, // Flags
+		(uint32_t)shaderStages.size(),
+		shaderStages.data(),
+		&vertexInputState, // Vertex input state
+		&inputAssembly,
+		nullptr, // Tesselation state create info
+		&viewportState,
+		&rasterizer,
+		&multisampling,
+		nullptr, // Depth stencil state
+		&colorBlending,
+		&dynamicState,
+		*_uPipelineLayout,
+		*_uRenderPass,
+		0, // Subpass
+		nullptr, // Base pipeline handle
+		-1); // Base pipeline index
+
+	auto result = _uDevice->createGraphicsPipeline(nullptr, pipelineCreateInfo);
+	_uGraphicsPipeline = vk::UniquePipeline(result.value);
 }
 
 void hagl::RenderSystem::createVkInstance() {

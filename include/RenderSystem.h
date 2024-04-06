@@ -41,8 +41,8 @@ namespace hagl {
 		vk::UniqueSurfaceKHR _uSurface;
 		vk::UniqueSwapchainKHR _uSwapchain;
 		vk::UniqueRenderPass _uRenderPass;
-		vk::UniqueShaderModule _uFragShaderModule;
-		vk::UniqueShaderModule _uVertShaderModule;
+		vk::UniquePipelineLayout _uPipelineLayout;
+		vk::UniquePipeline _uGraphicsPipeline;
 
 		/*
 		########  STRICT ORDERING SECTION END
