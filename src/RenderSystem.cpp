@@ -3,6 +3,8 @@
 #include <iostream>
 #include <algorithm>
 #include "HaglUtility.h"
+#include <vector>
+#include <fstream>
 
 hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
 	: _windowSystem(windowSystem),
@@ -12,12 +14,13 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
 	try {
 		createVkInstance();
 
-		_surface = _windowSystem.createVulkanSurface(*_vkInstance);
+		_uSurface = _windowSystem.createVulkanSurface(*_uInstance);
 		pickPhysicalDevice();
 		createLogicalDevice();
 		createSwapchain();
 		createImageViews();
-		createRenderPass(_physicalDevice, *_device, _swapchainFormat, _msaaSamples);
+		createRenderPass(_physicalDevice, *_uDevice, _swapchainFormat, _msaaSamples);
+		createGraphicsPipeline();
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
@@ -32,7 +35,7 @@ hagl::RenderSystem::~RenderSystem() {
 
 void hagl::RenderSystem::pickPhysicalDevice() {
 	uint32_t deviceCount = 0;
-	auto devices = _vkInstance->enumeratePhysicalDevices();
+	auto devices = _uInstance->enumeratePhysicalDevices();
 
 	if (devices.size() == 0) {
 		throw std::runtime_error("Failed to find a GPU with Vulkan support!");
@@ -40,10 +43,10 @@ void hagl::RenderSystem::pickPhysicalDevice() {
 	
 	for (auto device : devices) {
 
-		if (isDeviceSuitable(device, *_surface, _requiredDeviceExtensions)) {
+		if (isDeviceSuitable(device, *_uSurface, _requiredDeviceExtensions)) {
 			_physicalDevice = device;
 			_msaaSamples = getMaxUsableSampleCount(device);
-			_queueIndices = findQueueFamilies(device, *_surface);
+			_queueIndices = findQueueFamilies(device, *_uSurface);
 			return;
 		}
 	}
@@ -139,6 +142,20 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 	return device.createRenderPassUnique(createInfo);
 }
 
+void hagl::RenderSystem::createGraphicsPipeline() {
+	// TODO - make this configurable, probably a list of shaders to create or something
+	std::vector<char> _fragShaderBytes = readShaderBytes("shaders/frag.spv");
+	std::vector<char> _vertShaderBytes = readShaderBytes("shaders/vert.spv");
+
+	_uFragShaderModule = createShaderModule(*_uDevice, _fragShaderBytes);
+	_uVertShaderModule = createShaderModule(*_uDevice, _vertShaderBytes);
+
+	vk::PipelineShaderStageCreateInfo fragStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, *_uFragShaderModule, "main");
+	vk::PipelineShaderStageCreateInfo vertStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, *_uVertShaderModule, "main");
+
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages{ fragStageCreateInfo, vertStageCreateInfo };
+}
+
 void hagl::RenderSystem::createVkInstance() {
 	vk::ApplicationInfo info(
 				APP_NAME, // Application Name
@@ -159,14 +176,14 @@ void hagl::RenderSystem::createVkInstance() {
 		requiredInstanceExtensions.data() // Extension names
 	);
 
-	_vkInstance = vk::createInstanceUnique(appCreateInfo);
+	_uInstance = vk::createInstanceUnique(appCreateInfo);
 }
 
 void hagl::RenderSystem::createSwapchain() {
 	SwapchainSupportDetails details = {
-			_physicalDevice.getSurfaceCapabilitiesKHR(*_surface),
-			_physicalDevice.getSurfaceFormatsKHR(*_surface),
-			_physicalDevice.getSurfacePresentModesKHR(*_surface)
+			_physicalDevice.getSurfaceCapabilitiesKHR(*_uSurface),
+			_physicalDevice.getSurfaceFormatsKHR(*_uSurface),
+			_physicalDevice.getSurfacePresentModesKHR(*_uSurface)
 	};
 
 	vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(details.formats);
@@ -189,7 +206,7 @@ void hagl::RenderSystem::createSwapchain() {
 
 	vk::SwapchainCreateInfoKHR createInfo(
 		{} // flags
-		, *_surface
+		, * _uSurface
 		, imageCount // minImageCount
 		, surfaceFormat.format
 		, surfaceFormat.colorSpace
@@ -204,15 +221,15 @@ void hagl::RenderSystem::createSwapchain() {
 		, true // clipped
 		, VK_NULL_HANDLE); // Old swapchain
 
-	_swapchain = _device->createSwapchainKHRUnique(createInfo);
-	_images = _device->getSwapchainImagesKHR(*_swapchain);
+	_uSwapchain = _uDevice->createSwapchainKHRUnique(createInfo);
+	_images = _uDevice->getSwapchainImagesKHR(*_uSwapchain);
 	_swapchainExtent = extent;
 	_swapchainFormat = surfaceFormat.format;
 }
 
 void hagl::RenderSystem::createImageViews() {
 	for (auto image : _images) {
-		_imageViews.push_back(createImageView(_device.get(), image, _swapchainFormat, vk::ImageAspectFlagBits::eColor, 1));
+		_imageViews.push_back(createImageView(_uDevice.get(), image, _swapchainFormat, vk::ImageAspectFlagBits::eColor, 1));
 	}
 }
 
@@ -414,9 +431,14 @@ void hagl::RenderSystem::createLogicalDevice() {
 		&deviceFeatures, // Device features
 		NULL); // pNext
 
-	_device = _physicalDevice.createDeviceUnique(deviceCreateInfo);
-	_graphicsQueue = _device->getQueue(_queueIndices.graphicsFamily, 0);
-	_presentQueue = _device->getQueue(_queueIndices.presentFamily, 0);
+	_uDevice = _physicalDevice.createDeviceUnique(deviceCreateInfo);
+	_graphicsQueue = _uDevice->getQueue(_queueIndices.graphicsFamily, 0);
+	_presentQueue = _uDevice->getQueue(_queueIndices.presentFamily, 0);
+}
+
+static vk::UniqueShaderModule hagl::createShaderModule(const vk::Device& device, const std::vector<char>& bytes) {
+	vk::ShaderModuleCreateInfo createInfo({}, bytes.size(), reinterpret_cast<const uint32_t*>(bytes.data()), nullptr);
+	return device.createShaderModuleUnique(createInfo);
 }
 
 static vk::SurfaceFormatKHR hagl::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> formats) {
@@ -470,4 +492,21 @@ static vk::Extent2D hagl::chooseSwapExtent(const hagl::WindowSystem& windowSyste
 
 		return actualExtent;
 	}
+}
+
+static std::vector<char> hagl::readShaderBytes(const std::string& filePath) {
+	std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+	
+
+	if (!file.is_open()) {
+		throw std::runtime_error("Cannot find file to read!\n");
+	}
+
+	size_t fileSize = (size_t)file.tellg();
+	std::vector<char> bytes(fileSize);
+	file.seekg(0);
+	file.read(reinterpret_cast<char*>(bytes.data()), fileSize);
+	file.close();
+
+	return bytes;
 }

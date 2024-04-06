@@ -36,11 +36,13 @@ namespace hagl {
 		########  STRICT ORDERING SECTION BEGIN
 		*/
 		
-		vk::UniqueInstance _vkInstance;
-		vk::UniqueDevice _device;
-		vk::UniqueSurfaceKHR _surface;
-		vk::UniqueSwapchainKHR _swapchain;
-		vk::UniqueRenderPass _renderPass;
+		vk::UniqueInstance _uInstance;
+		vk::UniqueDevice _uDevice;
+		vk::UniqueSurfaceKHR _uSurface;
+		vk::UniqueSwapchainKHR _uSwapchain;
+		vk::UniqueRenderPass _uRenderPass;
+		vk::UniqueShaderModule _uFragShaderModule;
+		vk::UniqueShaderModule _uVertShaderModule;
 
 		/*
 		########  STRICT ORDERING SECTION END
@@ -60,11 +62,12 @@ namespace hagl {
 		vk::SampleCountFlagBits _msaaSamples = vk::SampleCountFlagBits::e1;
 		QueueFamilyIndices _queueIndices;
 
-		void createVkInstance();
-		void pickPhysicalDevice();
+		void createGraphicsPipeline();
+		void createImageViews();
 		void createLogicalDevice();
 		void createSwapchain();
-		void createImageViews();
+		void createVkInstance();
+		void pickPhysicalDevice();
 	};
 
 	static bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions);
@@ -74,9 +77,11 @@ namespace hagl {
 	static vk::Extent2D chooseSwapExtent(const WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities);
 	static vk::UniqueImageView createImageView(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspectMask, uint32_t mipLevels);
 	static vk::UniqueRenderPass createRenderPass(const vk::PhysicalDevice& physicalDevice, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples);
+	static vk::UniqueShaderModule createShaderModule(const vk::Device& device, const std::vector<char>& bytes);
 	static vk::Format findDepthFormat(const vk::PhysicalDevice& physicalDevice);
 	static QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface);
 	static vk::SampleCountFlagBits getMaxUsableSampleCount(const vk::PhysicalDevice& physicalDevice);
 	static bool isDeviceSuitable(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface, const std::vector<const char*>& requiredDeviceExtensions);
 	static bool isQueueFamilyComplete(const QueueFamilyIndices& deviceIndices);
+	static std::vector<char> readShaderBytes(const std::string& filePath);
 }
