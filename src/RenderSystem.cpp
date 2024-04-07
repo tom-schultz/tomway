@@ -19,8 +19,9 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
 		createLogicalDevice();
 		createSwapchain();
 		createImageViews();
-		_uRenderPass = createRenderPass(_physicalDevice, *_uDevice, _swapchainFormat, _msaaSamples);
+		_uRenderPass = createRenderPass(_physicalDevice, *_uDevice, _swapchainFormat, vk::SampleCountFlagBits::e1);
 		createGraphicsPipeline();
+		createFramebuffers();
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
@@ -72,22 +73,22 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 		vk::ImageLayout::eColorAttachmentOptimal
 	);
 
-	vk::AttachmentDescription resolveAttachment(
-		{}, // Flags
-		format, // Format
-		vk::SampleCountFlagBits::e1, // Sample count
-		vk::AttachmentLoadOp::eDontCare, // Load op
-		vk::AttachmentStoreOp::eStore, // Store op
-		vk::AttachmentLoadOp::eDontCare, // Stencil load op
-		vk::AttachmentStoreOp::eDontCare, // Stencil store op
-		vk::ImageLayout::eUndefined, // Initial layout
-		vk::ImageLayout::ePresentSrcKHR // Final layout
-	);
+	//vk::AttachmentDescription resolveAttachment(
+	//	{}, // Flags
+	//	format, // Format
+	//	vk::SampleCountFlagBits::e1, // Sample count
+	//	vk::AttachmentLoadOp::eDontCare, // Load op
+	//	vk::AttachmentStoreOp::eStore, // Store op
+	//	vk::AttachmentLoadOp::eDontCare, // Stencil load op
+	//	vk::AttachmentStoreOp::eDontCare, // Stencil store op
+	//	vk::ImageLayout::eUndefined, // Initial layout
+	//	vk::ImageLayout::ePresentSrcKHR // Final layout
+	//);
 
-	vk::AttachmentReference resolveAttachmentRef(
-		1, // Attachment
-		vk::ImageLayout::eColorAttachmentOptimal
-	);
+	//vk::AttachmentReference resolveAttachmentRef(
+	//	1, // Attachment
+	//	vk::ImageLayout::eColorAttachmentOptimal
+	//);
 
 	//vk::AttachmentDescription depthAttachment(
 	//	{}, // Flags
@@ -111,7 +112,7 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 		vk::PipelineBindPoint::eGraphics,
 		nullptr, // Input attachments
 		colorAttachmentRef, // Color attachment refs
-		resolveAttachmentRef, // Resolve attachment refs
+		//resolveAttachmentRef, // Resolve attachment refs
 		nullptr,
 		//&depthAttachmentRef, // Depth attachment ref, ptr for some reason...
 		nullptr // Preserve attachments
@@ -129,7 +130,7 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 
 	vk::AttachmentDescription attachments[]{
 		colorAttachment,
-		resolveAttachment,
+		//resolveAttachment,
 		//depthAttachment,
 	};
 
@@ -141,6 +142,43 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 	);
 
 	return device.createRenderPassUnique(createInfo);
+}
+
+void hagl::RenderSystem::createCommandBuffer() {
+	auto result = _uDevice->allocateCommandBuffersUnique({
+		*_uCommandPool,
+		vk::CommandBufferLevel::ePrimary,
+		1
+	});
+
+	_uCommandBuffer = std::move(result[0]);
+}
+
+void hagl::RenderSystem::createCommandPool() {
+	auto queueFamIndices = findQueueFamilies(_physicalDevice, *_uSurface);
+
+	_uCommandPool = _uDevice->createCommandPoolUnique({
+		vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+		queueFamIndices.graphicsFamily
+	});
+}
+
+void hagl::RenderSystem::createFramebuffers() {
+	_uFramebuffers.resize(_uImageViews.size());
+
+	// TODO - create color and image framebuffers
+
+	for (int i = 0; i < _uFramebuffers.size(); i++) {
+		vk::FramebufferCreateInfo createInfo(
+			{}, // Flags
+			*_uRenderPass,
+			*_uImageViews[i], // Attachments
+			_swapchainExtent.width,
+			_swapchainExtent.height,
+			1); // Layers
+
+		_uFramebuffers[i] = _uDevice->createFramebufferUnique(createInfo);
+	}
 }
 
 void hagl::RenderSystem::createGraphicsPipeline() {
@@ -189,7 +227,7 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 
 	vk::PipelineMultisampleStateCreateInfo multisampling(
 		{}, // Flags
-		_msaaSamples,
+		vk::SampleCountFlagBits::e1,
 		vk::False, // Sample shading enable
 		1.0f, // Min sample shading
 		nullptr, // Sample mask
@@ -349,9 +387,41 @@ void hagl::RenderSystem::createSwapchain() {
 
 void hagl::RenderSystem::createImageViews() {
 	for (auto image : _images) {
-		_imageViews.push_back(createImageView(_uDevice.get(), image, _swapchainFormat, vk::ImageAspectFlagBits::eColor, 1));
+		_uImageViews.push_back(createImageView(_uDevice.get(), image, _swapchainFormat, vk::ImageAspectFlagBits::eColor, 1));
 	}
 }
+
+void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex) {
+	commandBuffer.begin({});
+
+	vk::RenderPassBeginInfo renderPass({
+		*_uRenderPass,
+		*_uFramebuffers[imageIndex],
+		{ // Render area
+			vk::Offset2D(0, 0),
+			_swapchainExtent
+		}});
+
+	commandBuffer.beginRenderPass(renderPass, vk::SubpassContents::eInline);
+	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_uGraphicsPipeline);
+
+	vk::Viewport viewport({
+		0, 0, // x and y
+		static_cast<float>(_swapchainExtent.width),
+		static_cast<float>(_swapchainExtent.height),
+		0.0f, // Min depth
+		1.0f }); // Max depth
+		
+	commandBuffer.setViewport(0, viewport);
+
+	vk::Rect2D scissor({ 0, 0 }, _swapchainExtent);
+	commandBuffer.setScissor(0, scissor);
+	commandBuffer.draw(6, 1, 0, 0);
+	commandBuffer.endRenderPass();
+	commandBuffer.end();
+}
+
+#pragma region statics
 
 static vk::UniqueImageView hagl::createImageView(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspectMask, uint32_t mipLevels) {
 	vk::ComponentMapping components(
@@ -441,7 +511,7 @@ static bool hagl::checkValidationLayerSupport(const std::vector<const char*>& va
 	return true;
 }
 
-vk::Format hagl::findDepthFormat(const vk::PhysicalDevice& physicalDevice) {
+static vk::Format hagl::findDepthFormat(const vk::PhysicalDevice& physicalDevice) {
 	std::vector<vk::Format> formats = {
 		vk::Format::eD32Sfloat,
 		vk::Format::eD32SfloatS8Uint,
@@ -630,3 +700,5 @@ static std::vector<char> hagl::readShaderBytes(const std::string& filePath) {
 
 	return bytes;
 }
+
+#pragma endregion

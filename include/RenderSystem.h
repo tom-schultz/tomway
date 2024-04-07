@@ -40,9 +40,13 @@ namespace hagl {
 		vk::UniqueDevice _uDevice;
 		vk::UniqueSurfaceKHR _uSurface;
 		vk::UniqueSwapchainKHR _uSwapchain;
+		std::vector<vk::UniqueImageView> _uImageViews;
 		vk::UniqueRenderPass _uRenderPass;
 		vk::UniquePipelineLayout _uPipelineLayout;
 		vk::UniquePipeline _uGraphicsPipeline;
+		std::vector<vk::UniqueFramebuffer> _uFramebuffers;
+		vk::UniqueCommandPool _uCommandPool;
+		vk::UniqueCommandBuffer _uCommandBuffer;
 
 		/*
 		########  STRICT ORDERING SECTION END
@@ -55,19 +59,22 @@ namespace hagl {
 		vk::Queue _presentQueue;
 		std::vector<const char*> _validationLayers = { VALIDATION_LAYERS };
 		std::vector<vk::Image> _images;
-		std::vector<vk::UniqueImageView> _imageViews;
 		vk::Extent2D _swapchainExtent;
 		vk::Format _swapchainFormat;
 
 		vk::SampleCountFlagBits _msaaSamples = vk::SampleCountFlagBits::e1;
 		QueueFamilyIndices _queueIndices;
 
+		void createCommandBuffer();
+		void createCommandPool();
+		void createFramebuffers();
 		void createGraphicsPipeline();
 		void createImageViews();
 		void createLogicalDevice();
 		void createSwapchain();
 		void createVkInstance();
 		void pickPhysicalDevice();
+		void recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex);
 	};
 
 	static bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions);
