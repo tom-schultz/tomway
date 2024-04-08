@@ -22,6 +22,9 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
 		_uRenderPass = createRenderPass(_physicalDevice, *_uDevice, _swapchainFormat, vk::SampleCountFlagBits::e1);
 		createGraphicsPipeline();
 		createFramebuffers();
+		createCommandPool();
+		createCommandBuffer();
+		createSyncObjects();
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
@@ -65,7 +68,7 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 		vk::AttachmentLoadOp::eDontCare, // Stencil load op
 		vk::AttachmentStoreOp::eDontCare, // Stencil store op
 		vk::ImageLayout::eUndefined, // Initial layout
-		vk::ImageLayout::eColorAttachmentOptimal // Final layout
+		vk::ImageLayout::ePresentSrcKHR // Final layout
 	);
 
 	vk::AttachmentReference colorAttachmentRef(
@@ -121,10 +124,10 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 	vk::SubpassDependency dependency(
 		VK_SUBPASS_EXTERNAL, // Source subpass
 		0, // Dest subpass
-		vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eLateFragmentTests, // Source stage mask
-		vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests, // Dest stage mask
-		vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite, // Source access mask
-		vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite, // Dest access mask
+		vk::PipelineStageFlagBits::eColorAttachmentOutput, // Source stage mask
+		vk::PipelineStageFlagBits::eColorAttachmentOutput, // Dest stage mask
+		vk::AccessFlagBits::eNone, // Source access mask
+		vk::AccessFlagBits::eColorAttachmentWrite, // Dest access mask
 		{} // Dependency flags
 	);
 
@@ -192,7 +195,7 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 	vk::PipelineShaderStageCreateInfo fragStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, *uFragShaderModule, "main");
 	vk::PipelineShaderStageCreateInfo vertStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, *uVertShaderModule, "main");
 
-	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages{ fragStageCreateInfo, vertStageCreateInfo };
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages{ vertStageCreateInfo, fragStageCreateInfo };
 
 	std::vector<vk::DynamicState> dynamicStates{
 		vk::DynamicState::eViewport,
@@ -200,62 +203,6 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 	};
 
 	vk::PipelineDynamicStateCreateInfo dynamicState({}, dynamicStates);
-
-	vk::PipelineInputAssemblyStateCreateInfo inputAssembly(
-		{}, // Flags
-		vk::PrimitiveTopology::eTriangleList, //Topology
-		vk::False); // Primitive restart
-
-	vk::PipelineViewportStateCreateInfo viewportState(
-		{}, // Flags
-		1, // Viewport count
-		nullptr, // Viewports, null here because we're setting them dynamically
-		1); // Scissor count
-
-	vk::PipelineRasterizationStateCreateInfo rasterizer(
-		{}, //Flags
-		vk::False, // Depth clamp enable
-		vk::False, // Rasterizer discard enable
-		vk::PolygonMode::eFill, // Polygon mode
-		vk::CullModeFlagBits::eBack, // Cull mode
-		vk::FrontFace::eCounterClockwise, // Front face
-		vk::False, // Depth bias enable
-		0.0f, // Depth bias constant factor
-		0.0f, // Depth bias clamp
-		0.0f, // Depth bias slope factor
-		1.0f); // Line width
-
-	vk::PipelineMultisampleStateCreateInfo multisampling(
-		{}, // Flags
-		vk::SampleCountFlagBits::e1,
-		vk::False, // Sample shading enable
-		1.0f, // Min sample shading
-		nullptr, // Sample mask
-		vk::False, // Alpha to coverage enable
-		vk::False); // Alpha to one enable
-
-	vk::PipelineColorBlendAttachmentState colorBlendAttachment(
-		vk::True, // Blend enable
-		vk::BlendFactor::eSrcAlpha, // Src color blend factor
-		vk::BlendFactor::eOneMinusSrcAlpha, // Dst color blend factor
-		vk::BlendOp::eAdd, // Color blend op
-		vk::BlendFactor::eOne, // Src alpha blend factor
-		vk::BlendFactor::eZero, // Dst alpha blend factor
-		vk::BlendOp::eAdd); // Alpha blend op
-
-	vk::PipelineColorBlendStateCreateInfo colorBlending(
-		{}, // Flags
-		vk::False, // Logic op enable
-		vk::LogicOp::eCopy, // Logic op
-		colorBlendAttachment, // Attachments
-		{ 0.0f, 0.0f, 0.0f, 0.0f }); // Blend constants
-
-	vk::PipelineLayoutCreateInfo pipelineLayoutInfo(
-		{}, // Flags
-		nullptr, // Descriptor set layouts
-		nullptr); // Push constant ranges
-
-	_uPipelineLayout = _uDevice->createPipelineLayoutUnique(pipelineLayoutInfo);
 
 	// TODO - real vertex input descriptions
 	/*
@@ -274,6 +221,63 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 	*/
 
 	vk::PipelineVertexInputStateCreateInfo vertexInputState({}, nullptr, nullptr);
+
+	vk::PipelineInputAssemblyStateCreateInfo inputAssembly(
+		{}, // Flags
+		vk::PrimitiveTopology::eTriangleList, //Topology
+		vk::False); // Primitive restart
+
+	vk::PipelineViewportStateCreateInfo viewportState(
+		{}, // Flags
+		1, // Viewport count
+		nullptr, // Viewports, null here because we're setting them dynamically
+		1); // Scissor count
+
+	vk::PipelineRasterizationStateCreateInfo rasterizer(
+		{}, //Flags
+		vk::False, // Depth clamp enable
+		vk::False, // Rasterizer discard enable
+		vk::PolygonMode::eFill, // Polygon mode
+		vk::CullModeFlagBits::eBack, // Cull mode
+		vk::FrontFace::eClockwise, // Front face
+		vk::False, // Depth bias enable
+		0.0f, // Depth bias constant factor
+		0.0f, // Depth bias clamp
+		0.0f, // Depth bias slope factor
+		1.0f); // Line width
+
+	vk::PipelineMultisampleStateCreateInfo multisampling(
+		{}, // Flags
+		vk::SampleCountFlagBits::e1,
+		vk::False, // Sample shading enable
+		1.0f, // Min sample shading
+		nullptr, // Sample mask
+		vk::False, // Alpha to coverage enable
+		vk::False); // Alpha to one enable
+
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment(
+		vk::False, // Blend enable
+		vk::BlendFactor::eSrcAlpha, // Src color blend factor
+		vk::BlendFactor::eOneMinusSrcAlpha, // Dst color blend factor
+		vk::BlendOp::eAdd, // Color blend op
+		vk::BlendFactor::eOne, // Src alpha blend factor
+		vk::BlendFactor::eZero, // Dst alpha blend factor
+		vk::BlendOp::eAdd, // Alpha blend op
+		vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA); 
+
+	vk::PipelineColorBlendStateCreateInfo colorBlending(
+		{}, // Flags
+		vk::False, // Logic op enable
+		vk::LogicOp::eCopy, // Logic op
+		colorBlendAttachment, // Attachments
+		{ 0.0f, 0.0f, 0.0f, 0.0f }); // Blend constants
+
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfo(
+		{}, // Flags
+		nullptr, // Descriptor set layouts
+		nullptr); // Push constant ranges
+
+	_uPipelineLayout = _uDevice->createPipelineLayoutUnique(pipelineLayoutInfo);
 
 	// TODO - Depth stencil create info
 	/*
@@ -385,22 +389,58 @@ void hagl::RenderSystem::createSwapchain() {
 	_swapchainFormat = surfaceFormat.format;
 }
 
+
+void hagl::RenderSystem::createSyncObjects() {
+	_uImageAvailableSem = _uDevice->createSemaphoreUnique({});
+	_uRenderFinishedSem = _uDevice->createSemaphoreUnique({});
+	_uInFlightFence = _uDevice->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
+}
+
 void hagl::RenderSystem::createImageViews() {
 	for (auto image : _images) {
 		_uImageViews.push_back(createImageView(_uDevice.get(), image, _swapchainFormat, vk::ImageAspectFlagBits::eColor, 1));
 	}
 }
 
+void hagl::RenderSystem::drawFrame() {
+	_uDevice->waitForFences(*_uInFlightFence, vk::True, UINT64_MAX);
+	_uDevice->resetFences(*_uInFlightFence);
+
+	vk::Result result;
+	uint32_t imageIndex;
+
+	std::tie(result, imageIndex) = _uDevice->acquireNextImageKHR(*_uSwapchain, UINT64_MAX, *_uImageAvailableSem, nullptr);
+
+	_uCommandBuffer->reset();
+	recordCommandBuffer(*_uCommandBuffer, imageIndex);
+	vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
+	vk::SubmitInfo submitInfo({
+		*_uImageAvailableSem,
+		waitDstStage,
+		*_uCommandBuffer,
+		*_uRenderFinishedSem });
+
+	_graphicsQueue.submit(submitInfo, *_uInFlightFence);
+
+	vk::PresentInfoKHR presentInfo({
+		*_uRenderFinishedSem,
+		*_uSwapchain,
+		imageIndex });
+
+	_presentQueue.presentKHR(presentInfo);
+}
+
 void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex) {
-	commandBuffer.begin({});
+	vk::CommandBufferBeginInfo beginInfo;
+	commandBuffer.begin(beginInfo);
+	vk::ClearValue clearValue = vk::ClearValue({ { 0.0f, 0.0f, 0.0f, 1.0f } });
 
 	vk::RenderPassBeginInfo renderPass({
 		*_uRenderPass,
 		*_uFramebuffers[imageIndex],
-		{ // Render area
-			vk::Offset2D(0, 0),
-			_swapchainExtent
-		}});
+		{ vk::Offset2D(0, 0), _swapchainExtent }, // Render area
+		clearValue });
 
 	commandBuffer.beginRenderPass(renderPass, vk::SubpassContents::eInline);
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_uGraphicsPipeline);

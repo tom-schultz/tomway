@@ -29,6 +29,7 @@ namespace hagl {
 	public:
 		RenderSystem(WindowSystem& windowSystem);
 		~RenderSystem();
+		void drawFrame();
 	private:
 		/*
 		########  WARNING WARNING WARNING WARNING
@@ -47,6 +48,9 @@ namespace hagl {
 		std::vector<vk::UniqueFramebuffer> _uFramebuffers;
 		vk::UniqueCommandPool _uCommandPool;
 		vk::UniqueCommandBuffer _uCommandBuffer;
+		vk::UniqueSemaphore _uImageAvailableSem;
+		vk::UniqueSemaphore _uRenderFinishedSem;
+		vk::UniqueFence _uInFlightFence;
 
 		/*
 		########  STRICT ORDERING SECTION END
@@ -72,6 +76,7 @@ namespace hagl {
 		void createImageViews();
 		void createLogicalDevice();
 		void createSwapchain();
+		void createSyncObjects();
 		void createVkInstance();
 		void pickPhysicalDevice();
 		void recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex);

@@ -12,6 +12,7 @@ int main(int argc, char* argv[])
 
 	while (true) {
 		windowSystem.handle_events();
+		renderSystem.drawFrame();
 	}
 
 	return 0;
