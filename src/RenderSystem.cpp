@@ -6,8 +6,10 @@
 #include <vector>
 #include <fstream>
 
-hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
+hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, unsigned maxFramesInFlight)
 	: _windowSystem(windowSystem),
+	_currFrame(0),
+	_maxFramesInFlight(maxFramesInFlight),
 	_queueIndices(),
 	_swapchainFormat()
 {
@@ -31,6 +33,8 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem)
 		throw e;
 	}
 
+	_windowSystem.registerFramebufferResizeCallback(std::bind(&RenderSystem::resizeFramebuffer, this));
+	_windowSystem.registerMinimizedCallback(std::bind(&RenderSystem::minimized, this));
 	LOG_INFO("Render system initialized.");
 }
 
@@ -148,13 +152,10 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 }
 
 void hagl::RenderSystem::createCommandBuffer() {
-	auto result = _uDevice->allocateCommandBuffersUnique({
+	_uCommandBuffers = _uDevice->allocateCommandBuffersUnique({
 		*_uCommandPool,
 		vk::CommandBufferLevel::ePrimary,
-		1
-	});
-
-	_uCommandBuffer = std::move(result[0]);
+		_maxFramesInFlight });
 }
 
 void hagl::RenderSystem::createCommandPool() {
@@ -389,46 +390,77 @@ void hagl::RenderSystem::createSwapchain() {
 	_swapchainFormat = surfaceFormat.format;
 }
 
-
 void hagl::RenderSystem::createSyncObjects() {
-	_uImageAvailableSem = _uDevice->createSemaphoreUnique({});
-	_uRenderFinishedSem = _uDevice->createSemaphoreUnique({});
-	_uInFlightFence = _uDevice->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
+	_uImageAvailableSems.resize(_maxFramesInFlight);
+	_uRenderFinishedSems.resize(_maxFramesInFlight);
+	_uInFlightFences.resize(_maxFramesInFlight);
+
+	for (unsigned i = 0; i < _maxFramesInFlight; i++) {
+		_uImageAvailableSems[i] = _uDevice->createSemaphoreUnique({});
+		_uRenderFinishedSems[i] = _uDevice->createSemaphoreUnique({});
+		_uInFlightFences[i] = _uDevice->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
+	}
 }
 
 void hagl::RenderSystem::createImageViews() {
+	_uImageViews.clear();
+
 	for (auto image : _images) {
 		_uImageViews.push_back(createImageView(_uDevice.get(), image, _swapchainFormat, vk::ImageAspectFlagBits::eColor, 1));
 	}
 }
 
 void hagl::RenderSystem::drawFrame() {
-	_uDevice->waitForFences(*_uInFlightFence, vk::True, UINT64_MAX);
-	_uDevice->resetFences(*_uInFlightFence);
+	if (_windowMinimized) {
+		_windowSystem.waitWhileMinimized();
+		_windowMinimized = false;
+	}
+
+	_uDevice->waitForFences(*_uInFlightFences[_currFrame], vk::True, UINT64_MAX);
 
 	vk::Result result;
 	uint32_t imageIndex;
 
-	std::tie(result, imageIndex) = _uDevice->acquireNextImageKHR(*_uSwapchain, UINT64_MAX, *_uImageAvailableSem, nullptr);
+	std::tie(result, imageIndex) = _uDevice->acquireNextImageKHR(
+		*_uSwapchain,
+		UINT64_MAX,
+		*_uImageAvailableSems[_currFrame],
+		nullptr);
 
-	_uCommandBuffer->reset();
-	recordCommandBuffer(*_uCommandBuffer, imageIndex);
+	if (result == vk::Result::eErrorOutOfDateKHR) {
+		recreateSwapchain();
+		return;
+	}
+
+	_uDevice->resetFences(*_uInFlightFences[_currFrame]);
+	_uCommandBuffers[_currFrame]->reset();
+	recordCommandBuffer(*_uCommandBuffers[_currFrame], imageIndex);
 	vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
 	vk::SubmitInfo submitInfo({
-		*_uImageAvailableSem,
+		*_uImageAvailableSems[_currFrame],
 		waitDstStage,
-		*_uCommandBuffer,
-		*_uRenderFinishedSem });
+		*_uCommandBuffers[_currFrame],
+		*_uRenderFinishedSems[_currFrame]});
 
-	_graphicsQueue.submit(submitInfo, *_uInFlightFence);
+	_graphicsQueue.submit(submitInfo, *_uInFlightFences[_currFrame]);
 
 	vk::PresentInfoKHR presentInfo({
-		*_uRenderFinishedSem,
+		*_uRenderFinishedSems[_currFrame],
 		*_uSwapchain,
 		imageIndex });
 
-	_presentQueue.presentKHR(presentInfo);
+	result = _presentQueue.presentKHR(presentInfo);
+
+	if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || _framebufferResized) {
+		recreateSwapchain();
+	}
+
+	_currFrame = (_currFrame + 1) % _maxFramesInFlight;
+}
+
+void hagl::RenderSystem::minimized() {
+	_windowMinimized = true;
 }
 
 void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex) {
@@ -459,6 +491,25 @@ void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, u
 	commandBuffer.draw(6, 1, 0, 0);
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
+}
+
+void hagl::RenderSystem::recreateSwapchain() {
+	LOG_INFO("Resizing framebuffer!");
+	_windowSystem.waitWhileMinimized(); // Probably unnecessary, but it's safe
+	_framebufferResized = false;
+	_windowMinimized = false;
+
+	_uDevice->waitIdle();
+
+	// TODO - try recreating the swap chain while the old one is in-flight!
+
+	createSwapchain();
+	createImageViews();
+	createFramebuffers();
+}
+
+inline void hagl::RenderSystem::resizeFramebuffer() {
+	_framebufferResized = true;
 }
 
 #pragma region statics

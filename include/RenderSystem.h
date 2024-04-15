@@ -27,9 +27,11 @@ namespace hagl {
 
 	class RenderSystem {
 	public:
-		RenderSystem(WindowSystem& windowSystem);
+		RenderSystem(WindowSystem& windowSystem, unsigned maxFramesInFlight = 2);
 		~RenderSystem();
 		void drawFrame();
+		void minimized();
+		void resizeFramebuffer();
 	private:
 		/*
 		########  WARNING WARNING WARNING WARNING
@@ -47,15 +49,19 @@ namespace hagl {
 		vk::UniquePipeline _uGraphicsPipeline;
 		std::vector<vk::UniqueFramebuffer> _uFramebuffers;
 		vk::UniqueCommandPool _uCommandPool;
-		vk::UniqueCommandBuffer _uCommandBuffer;
-		vk::UniqueSemaphore _uImageAvailableSem;
-		vk::UniqueSemaphore _uRenderFinishedSem;
-		vk::UniqueFence _uInFlightFence;
+		std::vector<vk::UniqueCommandBuffer> _uCommandBuffers;
+		std::vector<vk::UniqueSemaphore> _uImageAvailableSems;
+		std::vector<vk::UniqueSemaphore> _uRenderFinishedSems;
+		std::vector<vk::UniqueFence> _uInFlightFences;
 
 		/*
 		########  STRICT ORDERING SECTION END
 		*/
 
+		bool _framebufferResized;
+		unsigned _maxFramesInFlight;
+		bool _windowMinimized;
+		unsigned _currFrame;
 		WindowSystem& _windowSystem;
 		vk::PhysicalDevice _physicalDevice;
 		std::vector<const char*> _requiredDeviceExtensions = { vk::KHRSwapchainExtensionName };
@@ -80,6 +86,7 @@ namespace hagl {
 		void createVkInstance();
 		void pickPhysicalDevice();
 		void recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex);
+		void recreateSwapchain();
 	};
 
 	static bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions);
