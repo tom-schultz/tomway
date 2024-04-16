@@ -67,24 +67,23 @@ namespace hagl {
 		########  STRICT ORDERING SECTION END
 		*/
 
-		bool _framebufferResized;
-		unsigned _maxFramesInFlight;
-		bool _windowMinimized;
 		unsigned _currFrame;
-		uint32_t _vertexCount;
-		size_t _vertexBufferSize;
-		WindowSystem& _windowSystem;
-		vk::PhysicalDevice _physicalDevice;
-		std::vector<const char*> _requiredDeviceExtensions = { vk::KHRSwapchainExtensionName };
+		bool _framebufferResized;
 		vk::Queue _graphicsQueue;
-		vk::Queue _presentQueue;
-		std::vector<const char*> _validationLayers = { VALIDATION_LAYERS };
 		std::vector<vk::Image> _images;
+		unsigned _maxFramesInFlight;
+		vk::SampleCountFlagBits _msaaSamples = vk::SampleCountFlagBits::e1;
+		vk::PhysicalDevice _physicalDevice;
+		vk::Queue _presentQueue;
+		QueueFamilyIndices _queueIndices;
+		std::vector<const char*> _requiredDeviceExtensions = { vk::KHRSwapchainExtensionName };
 		vk::Extent2D _swapchainExtent;
 		vk::Format _swapchainFormat;
-
-		vk::SampleCountFlagBits _msaaSamples = vk::SampleCountFlagBits::e1;
-		QueueFamilyIndices _queueIndices;
+		std::vector<const char*> _validationLayers = { VALIDATION_LAYERS };
+		uint32_t _vertexCount;
+		size_t _vertexBufferSize;
+		bool _windowMinimized;
+		WindowSystem& _windowSystem;
 
 		void createBuffer(
 			size_t size,
@@ -102,7 +101,6 @@ namespace hagl {
 		void createLogicalDevice();
 		void createSwapchain();
 		void createSyncObjects();
-		void createVertexBuffer();
 		void createVkInstance();
 		uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 		void pickPhysicalDevice();
@@ -111,13 +109,11 @@ namespace hagl {
 		void transferVertices(const std::vector<Vertex>& vertices);
 	};
 
-	vk::UniqueBuffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memProperties);
-
 	static bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions);
 	static bool checkValidationLayerSupport(const std::vector<const char*>& validationLayers);
-	static vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> formats);
-	static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> modes);
 	static vk::Extent2D chooseSwapExtent(const WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities);
+	static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> modes);
+	static vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> formats);
 	static vk::UniqueImageView createImageView(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspectMask, uint32_t mipLevels);
 	static vk::UniqueRenderPass createRenderPass(const vk::PhysicalDevice& physicalDevice, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples);
 	static vk::UniqueShaderModule createShaderModule(const vk::Device& device, const std::vector<char>& bytes);
