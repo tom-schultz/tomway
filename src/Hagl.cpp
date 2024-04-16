@@ -14,7 +14,6 @@ const std::vector<hagl::Vertex> vertices = {
 
 int main(int argc, char* argv[])
 {
-
 	hagl::WindowSystem windowSystem(1024, 768);
 	hagl::RenderSystem renderSystem(windowSystem, vertices.size());
 

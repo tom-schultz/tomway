@@ -29,7 +29,14 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCoun
 		createCommandPool();
 		createCommandBuffer();
 		createSyncObjects();
-		createVertexBuffer();
+
+		createBuffer(
+			_vertexBufferSize,
+			vk::BufferUsageFlagBits::eVertexBuffer,
+			vk::SharingMode::eExclusive,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+			_uVertexBuffer,
+			_uVertexBufferMemory);
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
@@ -152,6 +159,31 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 	);
 
 	return device.createRenderPassUnique(createInfo);
+}
+
+void hagl::RenderSystem::createBuffer(
+	size_t size,
+	vk::BufferUsageFlagBits usageFlags,
+	vk::SharingMode sharingMode,
+	vk::MemoryPropertyFlags memoryPropertyFlags,
+	vk::UniqueBuffer& uBuffer,
+	vk::UniqueDeviceMemory& uBufferMemory)
+{
+	vk::BufferCreateInfo bufferInfo(
+		{}, // Flags
+		size,
+		usageFlags,
+		sharingMode);
+
+	uBuffer = _uDevice->createBufferUnique(bufferInfo);
+	auto memRequirements = _uDevice->getBufferMemoryRequirements(*uBuffer);
+
+	vk::MemoryAllocateInfo allocInfo(
+		memRequirements.size,
+		findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags));
+
+	uBufferMemory = _uDevice->allocateMemoryUnique(allocInfo);
+	_uDevice->bindBufferMemory(*uBuffer, *uBufferMemory, 0);
 }
 
 void hagl::RenderSystem::createCommandBuffer() {
@@ -397,25 +429,6 @@ void hagl::RenderSystem::createSyncObjects() {
 	}
 }
 
-void hagl::RenderSystem::createVertexBuffer() {
-	vk::BufferCreateInfo bufferInfo(
-		{}, // Flags
-		sizeof(Vertex) * _vertexCount, // Buffer size
-		vk::BufferUsageFlagBits::eVertexBuffer,
-		vk::SharingMode::eExclusive);
-
-	_uVertexBuffer = _uDevice->createBufferUnique(bufferInfo);
-	vk::MemoryRequirements memRequirements = _uDevice->getBufferMemoryRequirements(*_uVertexBuffer);
-	auto memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-
-	vk::MemoryAllocateInfo allocInfo(
-		memRequirements.size,
-		findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags));
-
-	_uVertexBufferMemory = _uDevice->allocateMemoryUnique(allocInfo);
-	_uDevice->bindBufferMemory(*_uVertexBuffer, *_uVertexBufferMemory, 0);
-}
-
 void hagl::RenderSystem::createImageViews() {
 	_uImageViews.clear();
 
@@ -546,6 +559,8 @@ inline void hagl::RenderSystem::resizeFramebuffer() {
 	_framebufferResized = true;
 }
 
+// TODO - use a different queue family for transfer operations
+// https://docs.vulkan.org/tutorial/latest/00_Introduction.html
 void hagl::RenderSystem::transferVertices(const std::vector<Vertex>& vertices) {
 	void* data = _uDevice->mapMemory(*_uVertexBufferMemory, 0, _vertexBufferSize);
 	memcpy(data, vertices.data(), _vertexBufferSize);

@@ -8,7 +8,7 @@
 	#define VALIDATION_LAYERS "VK_LAYER_KHRONOS_validation"
 #endif
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan.hpp>
 #include "Transform.h"
 #include "Vertex.h"
 #include "WindowSystem.h"
@@ -86,6 +86,14 @@ namespace hagl {
 		vk::SampleCountFlagBits _msaaSamples = vk::SampleCountFlagBits::e1;
 		QueueFamilyIndices _queueIndices;
 
+		void createBuffer(
+			size_t size,
+			vk::BufferUsageFlagBits usageFlags,
+			vk::SharingMode sharingMode,
+			vk::MemoryPropertyFlags memoryPropertyFlags,
+			vk::UniqueBuffer& uBuffer,
+			vk::UniqueDeviceMemory& uBufferMemory);
+
 		void createCommandBuffer();
 		void createCommandPool();
 		void createFramebuffers();
@@ -102,6 +110,8 @@ namespace hagl {
 		void recreateSwapchain();
 		void transferVertices(const std::vector<Vertex>& vertices);
 	};
+
+	vk::UniqueBuffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memProperties);
 
 	static bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions);
 	static bool checkValidationLayerSupport(const std::vector<const char*>& validationLayers);
