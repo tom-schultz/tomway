@@ -181,6 +181,8 @@
     <ClCompile Include="src\Hagl.cpp" />
     <ClCompile Include="src\WindowSystem.cpp" />
     <ClCompile Include="src\HaglUtility.cpp" />
+    <ClCompile Include="src\Vertex.cpp" />
+    <ClCompile Include="src\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\HaglConstants.h" />
@@ -188,6 +190,8 @@
     <ClInclude Include="include\RenderSystem.h" />
     <ClInclude Include="include\WindowSystem.h" />
     <ClInclude Include="include\HaglUtility.h" />
+    <ClInclude Include="include\Vertex.h" />
+    <ClInclude Include="include\Transform.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\sdl\VisualC\SDLmain\SDLmain.vcxproj">

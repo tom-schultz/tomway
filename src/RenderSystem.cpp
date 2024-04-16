@@ -6,12 +6,14 @@
 #include <vector>
 #include <fstream>
 
-hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, unsigned maxFramesInFlight)
+hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCount, unsigned maxFramesInFlight)
 	: _windowSystem(windowSystem),
 	_currFrame(0),
 	_maxFramesInFlight(maxFramesInFlight),
 	_queueIndices(),
-	_swapchainFormat()
+	_swapchainFormat(),
+	_vertexCount(vertexCount),
+	_vertexBufferSize(vertexCount * sizeof(Vertex))
 {
 	try {
 		createVkInstance();
@@ -27,6 +29,7 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, unsigned maxFramesI
 		createCommandPool();
 		createCommandBuffer();
 		createSyncObjects();
+		createVertexBuffer();
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
@@ -205,23 +208,15 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 
 	vk::PipelineDynamicStateCreateInfo dynamicState({}, dynamicStates);
 
-	// TODO - real vertex input descriptions
-	/*
 	// Vertex input descriptions
-	VkVertexInputBindingDescription bindingDesc = getBindingDescription();
-	VkVertexInputAttributeDescription* attributeDescDA = NULL;
-	uint32_t attributeDescCount = getAttributeDescription(&attributeDescDA);
+	auto bindingDesc = Vertex::getBindingDescription();
+	auto attributeDesc = Vertex::getAttributeDescriptions();
 
 	// How we pass input to the vertex shader
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
-	vertexInputInfo.vertexAttributeDescriptionCount = attributeDescCount;
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescDA;
-	*/
-
-	vk::PipelineVertexInputStateCreateInfo vertexInputState({}, nullptr, nullptr);
+	vk::PipelineVertexInputStateCreateInfo vertexInputState(
+		{}, // Flags
+		bindingDesc,
+		attributeDesc);
 
 	vk::PipelineInputAssemblyStateCreateInfo inputAssembly(
 		{}, // Flags
@@ -402,6 +397,25 @@ void hagl::RenderSystem::createSyncObjects() {
 	}
 }
 
+void hagl::RenderSystem::createVertexBuffer() {
+	vk::BufferCreateInfo bufferInfo(
+		{}, // Flags
+		sizeof(Vertex) * _vertexCount, // Buffer size
+		vk::BufferUsageFlagBits::eVertexBuffer,
+		vk::SharingMode::eExclusive);
+
+	_uVertexBuffer = _uDevice->createBufferUnique(bufferInfo);
+	vk::MemoryRequirements memRequirements = _uDevice->getBufferMemoryRequirements(*_uVertexBuffer);
+	auto memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+
+	vk::MemoryAllocateInfo allocInfo(
+		memRequirements.size,
+		findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags));
+
+	_uVertexBufferMemory = _uDevice->allocateMemoryUnique(allocInfo);
+	_uDevice->bindBufferMemory(*_uVertexBuffer, *_uVertexBufferMemory, 0);
+}
+
 void hagl::RenderSystem::createImageViews() {
 	_uImageViews.clear();
 
@@ -410,13 +424,18 @@ void hagl::RenderSystem::createImageViews() {
 	}
 }
 
-void hagl::RenderSystem::drawFrame() {
+void hagl::RenderSystem::drawFrame(
+	const Transform& transform,
+	const std::vector<Vertex>& vertices,
+	const std::vector<uint32_t> indices)
+{
 	if (_windowMinimized) {
 		_windowSystem.waitWhileMinimized();
 		_windowMinimized = false;
 	}
 
 	_uDevice->waitForFences(*_uInFlightFences[_currFrame], vk::True, UINT64_MAX);
+	transferVertices(vertices);
 
 	vk::Result result;
 	uint32_t imageIndex;
@@ -459,6 +478,20 @@ void hagl::RenderSystem::drawFrame() {
 	_currFrame = (_currFrame + 1) % _maxFramesInFlight;
 }
 
+uint32_t hagl::RenderSystem::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+	auto memProperties = _physicalDevice.getMemoryProperties();
+
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i))
+			&& (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			return i;
+		}
+	}
+
+	throw std::runtime_error("Failed to find a suitable memory type!");
+}
+
 void hagl::RenderSystem::minimized() {
 	_windowMinimized = true;
 }
@@ -476,6 +509,7 @@ void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, u
 
 	commandBuffer.beginRenderPass(renderPass, vk::SubpassContents::eInline);
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_uGraphicsPipeline);
+	commandBuffer.bindVertexBuffers(0, *_uVertexBuffer, { 0 }); // First binding, buffer, offsets
 
 	vk::Viewport viewport({
 		0, 0, // x and y
@@ -488,7 +522,7 @@ void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, u
 
 	vk::Rect2D scissor({ 0, 0 }, _swapchainExtent);
 	commandBuffer.setScissor(0, scissor);
-	commandBuffer.draw(6, 1, 0, 0);
+	commandBuffer.draw(_vertexCount, 1, 0, 0); // Vertex count, instance count, first vertex, first instance
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
 }
@@ -510,6 +544,12 @@ void hagl::RenderSystem::recreateSwapchain() {
 
 inline void hagl::RenderSystem::resizeFramebuffer() {
 	_framebufferResized = true;
+}
+
+void hagl::RenderSystem::transferVertices(const std::vector<Vertex>& vertices) {
+	void* data = _uDevice->mapMemory(*_uVertexBufferMemory, 0, _vertexBufferSize);
+	memcpy(data, vertices.data(), _vertexBufferSize);
+	_uDevice->unmapMemory(*_uVertexBufferMemory);
 }
 
 #pragma region statics

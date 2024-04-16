@@ -9,6 +9,8 @@
 #endif
 
 #include "vulkan/vulkan.hpp"
+#include "Transform.h"
+#include "Vertex.h"
 #include "WindowSystem.h"
 
 namespace hagl {
@@ -27,9 +29,14 @@ namespace hagl {
 
 	class RenderSystem {
 	public:
-		RenderSystem(WindowSystem& windowSystem, unsigned maxFramesInFlight = 2);
+		RenderSystem(WindowSystem& windowSystem, uint32_t vertexCount, unsigned maxFramesInFlight = 2);
 		~RenderSystem();
-		void drawFrame();
+
+		void drawFrame(
+			const Transform& transform,
+			const std::vector<Vertex>& vertices,
+			const std::vector<uint32_t> indices);
+
 		void minimized();
 		void resizeFramebuffer();
 	private:
@@ -53,6 +60,8 @@ namespace hagl {
 		std::vector<vk::UniqueSemaphore> _uImageAvailableSems;
 		std::vector<vk::UniqueSemaphore> _uRenderFinishedSems;
 		std::vector<vk::UniqueFence> _uInFlightFences;
+		vk::UniqueBuffer _uVertexBuffer;
+		vk::UniqueDeviceMemory _uVertexBufferMemory;
 
 		/*
 		########  STRICT ORDERING SECTION END
@@ -62,6 +71,8 @@ namespace hagl {
 		unsigned _maxFramesInFlight;
 		bool _windowMinimized;
 		unsigned _currFrame;
+		uint32_t _vertexCount;
+		size_t _vertexBufferSize;
 		WindowSystem& _windowSystem;
 		vk::PhysicalDevice _physicalDevice;
 		std::vector<const char*> _requiredDeviceExtensions = { vk::KHRSwapchainExtensionName };
@@ -83,10 +94,13 @@ namespace hagl {
 		void createLogicalDevice();
 		void createSwapchain();
 		void createSyncObjects();
+		void createVertexBuffer();
 		void createVkInstance();
+		uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 		void pickPhysicalDevice();
 		void recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex);
 		void recreateSwapchain();
+		void transferVertices(const std::vector<Vertex>& vertices);
 	};
 
 	static bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions);
