@@ -1,10 +1,12 @@
 #pragma once
 
+#include <functional>
+#include <vector>
+#include <vulkan/vulkan.hpp>
+
+#include "InputEvent.h"
 #include "SDL.h"
 #include "SDL_vulkan.h"
-#include <vector>
-#include "vulkan/vulkan.hpp"
-#include <functional>
 
 namespace hagl {
 	class WindowSystem
@@ -14,7 +16,7 @@ namespace hagl {
 		vk::UniqueSurfaceKHR createVulkanSurface(const vk::Instance& instance);
 		std::vector<const char*> getExtensions() const;
 		void getVulkanFramebufferSize(uint32_t& width, uint32_t& height) const;
-		void handle_events();
+		std::vector<InputEvent> handle_events();
 		void registerFramebufferResizeCallback(std::function<void()> callback);
 		void registerMinimizedCallback(std::function<void()> callback);
 		void waitWhileMinimized();

@@ -50,8 +50,9 @@ void hagl::WindowSystem::getVulkanFramebufferSize(uint32_t& width, uint32_t& hei
 	height = (uint32_t)h;
 }
 
-void hagl::WindowSystem::handle_events() {
+std::vector<hagl::InputEvent> hagl::WindowSystem::handle_events() {
 	SDL_Event e;
+	std::vector<InputEvent> inputEvents;
 
 	while (SDL_PollEvent(&e)) {
 		switch (e.type) {
@@ -86,10 +87,31 @@ void hagl::WindowSystem::handle_events() {
 		case SDL_QUIT:
 			LOG_INFO("Received quit event, exiting!");
 			exit(0);
+		case SDL_KEYDOWN:
+		case SDL_KEYUP: {
+			InputButton button = toInputButton(e.key.keysym.sym);
+			InputEventType type = toInputEventType((SDL_EventType)e.type);
+
+			if (button != InputButton::NONE) {
+				inputEvents.push_back({ type, button });
+			}
+		}
+		case SDL_MOUSEBUTTONUP:
+		case SDL_MOUSEBUTTONDOWN: {
+			InputButton button = toInputButton(e.button);
+			InputEventType type = toInputEventType((SDL_EventType)e.type);
+
+			if (button != InputButton::NONE) {
+				inputEvents.push_back({ type, button });
+			}
+			break;
+		}
 		default:
-			continue;
+			break;
 		}
 	}
+
+	return inputEvents;
 }
 
 void hagl::WindowSystem::registerFramebufferResizeCallback(std::function<void()> callback) {

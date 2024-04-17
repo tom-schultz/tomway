@@ -176,6 +176,7 @@
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\InputEvent.cpp" />
     <ClCompile Include="src\HaglConstants.cpp" />
     <ClCompile Include="src\RenderSystem.cpp" />
     <ClCompile Include="src\Hagl.cpp" />
@@ -192,6 +193,7 @@
     <ClInclude Include="include\HaglUtility.h" />
     <ClInclude Include="include\Vertex.h" />
     <ClInclude Include="include\Transform.h" />
+    <ClInclude Include="include\InputEvent.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\sdl\VisualC\SDLmain\SDLmain.vcxproj">

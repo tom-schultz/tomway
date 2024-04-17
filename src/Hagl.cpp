@@ -2,6 +2,7 @@
 //
 
 #include "Hagl.h"
+#include "HaglUtility.h"
 #include "RenderSystem.h"
 #include "Vertex.h"
 #include "WindowSystem.h"
@@ -21,7 +22,12 @@ int main(int argc, char* argv[])
 	hagl::RenderSystem renderSystem(windowSystem, (uint32_t) vertices.size());
 
 	while (true) {
-		windowSystem.handle_events();
+		auto inputEvents = windowSystem.handle_events();
+
+		for (auto event : inputEvents) {
+			LOG_INFO("Received input event of type %d and button %d", event.type, event.button);
+		}
+
 		renderSystem.drawFrame({}, vertices, {});
 	}
 
