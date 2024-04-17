@@ -33,7 +33,7 @@ namespace hagl {
 		~RenderSystem();
 
 		void drawFrame(
-			const Transform& transform,
+			Transform transform,
 			const std::vector<Vertex>& vertices,
 			const std::vector<uint32_t> indices);
 
@@ -127,7 +127,7 @@ namespace hagl {
 		void recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex);
 		void recreateSwapchain();
 		void transferVertices(const std::vector<Vertex>& vertices);
-		void updateUniformBuffer();
+		void updateUniformBuffer(Transform transform);
 	};
 
 	static bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions);

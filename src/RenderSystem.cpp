@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -7,10 +6,6 @@
 #include "HaglConstants.h"
 #include "HaglUtility.h"
 #include "RenderSystem.h"
-
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCount, unsigned maxFramesInFlight)
 	: _currFrame(0),
@@ -460,7 +455,7 @@ void hagl::RenderSystem::createVkInstance() {
 }
 
 void hagl::RenderSystem::drawFrame(
-	const Transform& transform,
+	Transform transform,
 	const std::vector<Vertex>& vertices,
 	const std::vector<uint32_t> indices)
 {
@@ -488,7 +483,7 @@ void hagl::RenderSystem::drawFrame(
 
 	_uDevice->resetFences(*_uInFlightFences[_currFrame]);
 	_uCommandBuffers[_currFrame]->reset();
-	updateUniformBuffer();
+	updateUniformBuffer(transform);
 	recordCommandBuffer(*_uCommandBuffers[_currFrame], imageIndex);
 	vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
@@ -619,25 +614,7 @@ void hagl::RenderSystem::transferVertices(const std::vector<Vertex>& vertices) {
 	memcpy(_stagingBufferMapped, vertices.data(), _vertexBufferSize);
 }
 
-void hagl::RenderSystem::updateUniformBuffer() {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-	Transform transform;
-	transform.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-	transform.view = glm::lookAt(
-		glm::vec3(0.0f, 1.00000f, 6.0f),
-		glm::vec3(0.0f, 0.0f, 0.0f),
-		glm::vec3(0.0f, 0.0f, 1.0f));
-
-	transform.projection = glm::perspective(
-		glm::radians(45.0f),
-		_swapchainExtent.width / (float)_swapchainExtent.height,
-		0.1f,
-		10.0f);
-
+void hagl::RenderSystem::updateUniformBuffer(Transform transform) {
 	transform.projection[1][1] *= -1;
 	memcpy(_uniformBuffersMapped[_currFrame], &transform, sizeof(transform));
 }

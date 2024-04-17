@@ -5,7 +5,6 @@
 namespace hagl {
 	enum InputEventType {
 		UNSUPPORTED = 0,
-		MOUSE_MOVE,
 		BUTTON_DOWN,
 		BUTTON_UP
 	};
