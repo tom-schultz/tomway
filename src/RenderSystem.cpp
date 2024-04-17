@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -6,6 +7,10 @@
 #include "HaglConstants.h"
 #include "HaglUtility.h"
 #include "RenderSystem.h"
+
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCount, unsigned maxFramesInFlight)
 	: _currFrame(0),
@@ -25,12 +30,16 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCoun
 		createSwapchain();
 		createImageViews();
 		_uRenderPass = createRenderPass(_physicalDevice, *_uDevice, _swapchainFormat, vk::SampleCountFlagBits::e1);
+		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
 		createCommandBuffer();
 		createSyncObjects();
 		createVertexBuffers();
+		createUniformBuffers();
+		createDescriptorPool();
+		createDescriptorSets();
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
@@ -95,6 +104,49 @@ void hagl::RenderSystem::createCommandPool() {
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
 		queueFamIndices.graphicsFamily
 	});
+}
+
+void hagl::RenderSystem::createDescriptorSets() {
+	// This line screams wrong at first glance - I'm taking a value in a resource handler and copying it
+	// multiple times in a vector! BUT, remember that the handler here doesn't call delete - it calls Vulkan
+	// Destroy commands. We don't actually *care* about the DescriptorSetLayout struct, it's a handle to the
+	// actual resource inside of Vulkan. We can copy the handle as many times as we like.
+	std::vector<vk::DescriptorSetLayout> layouts(_maxFramesInFlight, *_uDescriptorSetLayout);
+	vk::DescriptorSetAllocateInfo allocInfo(*_uDescriptorPool, layouts);
+	_descriptorSets = _uDevice->allocateDescriptorSets(allocInfo);
+
+	for (uint32_t i = 0; i < _maxFramesInFlight; i++) {
+		vk::DescriptorBufferInfo bufferInfo(*_uUniformBuffers[i], 0, sizeof(Transform)); // Buffer, offset, range/size
+
+		vk::WriteDescriptorSet descriptorWrite(
+			_descriptorSets[i],
+			0, // Binding
+			0, // Array element
+			vk::DescriptorType::eUniformBuffer,
+			nullptr, // Image info
+			bufferInfo,
+			nullptr); // Texel buffer view
+
+		_uDevice->updateDescriptorSets(descriptorWrite, nullptr);
+	}
+}
+
+void hagl::RenderSystem::createDescriptorPool() {
+	vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer, _maxFramesInFlight);
+	vk::DescriptorPoolCreateInfo poolInfo({}, _maxFramesInFlight, poolSize); // Flags, max sets, pool sizes
+	_uDescriptorPool = _uDevice->createDescriptorPoolUnique(poolInfo);
+}
+
+void hagl::RenderSystem::createDescriptorSetLayout() {
+	vk::DescriptorSetLayoutBinding transformLayoutBinding(
+		0, // Binding
+		vk::DescriptorType::eUniformBuffer,
+		1, // Descriptor count
+		vk::ShaderStageFlagBits::eVertex,
+		nullptr); // Immutable samplers
+
+	vk::DescriptorSetLayoutCreateInfo layoutInfo({}, transformLayoutBinding); // Flags, bindings
+	_uDescriptorSetLayout = _uDevice->createDescriptorSetLayoutUnique(layoutInfo);
 }
 
 void hagl::RenderSystem::createFramebuffers() {
@@ -162,7 +214,7 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 		vk::False, // Rasterizer discard enable
 		vk::PolygonMode::eFill, // Polygon mode
 		vk::CullModeFlagBits::eBack, // Cull mode
-		vk::FrontFace::eClockwise, // Front face
+		vk::FrontFace::eCounterClockwise, // Front face
 		vk::False, // Depth bias enable
 		0.0f, // Depth bias constant factor
 		0.0f, // Depth bias clamp
@@ -197,7 +249,7 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo(
 		{}, // Flags
-		nullptr, // Descriptor set layouts
+		*_uDescriptorSetLayout, // Descriptor set layouts
 		nullptr); // Push constant ranges
 
 	_uPipelineLayout = _uDevice->createPipelineLayoutUnique(pipelineLayoutInfo);
@@ -345,6 +397,25 @@ void hagl::RenderSystem::createSyncObjects() {
 	}
 }
 
+void hagl::RenderSystem::createUniformBuffers() {
+	vk::DeviceSize bufferSize = sizeof(Transform);
+	_uUniformBuffers.resize(_maxFramesInFlight);
+	_uUniformBuffersMemory.resize(_maxFramesInFlight);
+	_uniformBuffersMapped.resize(_maxFramesInFlight);
+
+	for (size_t i = 0; i < _maxFramesInFlight; i++) {
+		createBuffer(
+			bufferSize,
+			vk::BufferUsageFlagBits::eUniformBuffer,
+			vk::SharingMode::eExclusive,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+			_uUniformBuffers[i],
+			_uUniformBuffersMemory[i]);
+
+		_uniformBuffersMapped[i] = _uDevice->mapMemory(*_uUniformBuffersMemory[i], 0, bufferSize);
+	}
+}
+
 void hagl::RenderSystem::createVertexBuffers() {
 	createBuffer(
 		_vertexBufferSize,
@@ -353,6 +424,8 @@ void hagl::RenderSystem::createVertexBuffers() {
 		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
 		_uStagingBuffer,
 		_uStagingBufferMemory);
+
+	_stagingBufferMapped = _uDevice->mapMemory(*_uStagingBufferMemory, 0, _vertexBufferSize);
 
 	createBuffer(
 		_vertexBufferSize,
@@ -415,6 +488,7 @@ void hagl::RenderSystem::drawFrame(
 
 	_uDevice->resetFences(*_uInFlightFences[_currFrame]);
 	_uCommandBuffers[_currFrame]->reset();
+	updateUniformBuffer();
 	recordCommandBuffer(*_uCommandBuffers[_currFrame], imageIndex);
 	vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
@@ -507,6 +581,14 @@ void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, u
 
 	vk::Rect2D scissor({ 0, 0 }, _swapchainExtent);
 	commandBuffer.setScissor(0, scissor);
+
+	commandBuffer.bindDescriptorSets(
+		vk::PipelineBindPoint::eGraphics,
+		*_uPipelineLayout,
+		0, // First set
+		_descriptorSets[_currFrame],
+		nullptr); // Dynamic offsets
+
 	commandBuffer.draw(_vertexCount, 1, 0, 0); // Vertex count, instance count, first vertex, first instance
 	commandBuffer.endRenderPass();
 	commandBuffer.end();
@@ -534,9 +616,30 @@ inline void hagl::RenderSystem::resizeFramebuffer() {
 // TODO - use a different queue family for transfer operations
 // https://docs.vulkan.org/tutorial/latest/00_Introduction.html
 void hagl::RenderSystem::transferVertices(const std::vector<Vertex>& vertices) {
-	void* data = _uDevice->mapMemory(*_uStagingBufferMemory, 0, _vertexBufferSize);
-	memcpy(data, vertices.data(), _vertexBufferSize);
-	_uDevice->unmapMemory(*_uStagingBufferMemory);
+	memcpy(_stagingBufferMapped, vertices.data(), _vertexBufferSize);
+}
+
+void hagl::RenderSystem::updateUniformBuffer() {
+	static auto startTime = std::chrono::high_resolution_clock::now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+	Transform transform;
+	transform.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	transform.view = glm::lookAt(
+		glm::vec3(0.0f, 1.00000f, 6.0f),
+		glm::vec3(0.0f, 0.0f, 0.0f),
+		glm::vec3(0.0f, 0.0f, 1.0f));
+
+	transform.projection = glm::perspective(
+		glm::radians(45.0f),
+		_swapchainExtent.width / (float)_swapchainExtent.height,
+		0.1f,
+		10.0f);
+
+	transform.projection[1][1] *= -1;
+	memcpy(_uniformBuffersMapped[_currFrame], &transform, sizeof(transform));
 }
 
 #pragma region statics

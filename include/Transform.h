@@ -3,11 +3,12 @@
 #include <glm/glm.hpp>
 
 namespace hagl {
+	// https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
 	struct Transform
 	{
-		glm::vec3 translation;
-		glm::vec4 rotation;
-		glm::vec3 scale;
+		alignas(16) glm::mat4 model;
+		alignas(16) glm::mat4 view;
+		alignas(16) glm::mat4 projection;
 	};
 }
 

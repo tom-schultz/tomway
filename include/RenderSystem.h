@@ -52,6 +52,7 @@ namespace hagl {
 		vk::UniqueSwapchainKHR _uSwapchain;
 		std::vector<vk::UniqueImageView> _uImageViews;
 		vk::UniqueRenderPass _uRenderPass;
+		vk::UniqueDescriptorSetLayout _uDescriptorSetLayout;
 		vk::UniquePipelineLayout _uPipelineLayout;
 		vk::UniquePipeline _uGraphicsPipeline;
 		std::vector<vk::UniqueFramebuffer> _uFramebuffers;
@@ -64,12 +65,16 @@ namespace hagl {
 		vk::UniqueDeviceMemory _uStagingBufferMemory;
 		vk::UniqueBuffer _uVertexBuffer;
 		vk::UniqueDeviceMemory _uVertexBufferMemory;
+		std::vector<vk::UniqueBuffer> _uUniformBuffers;
+		std::vector<vk::UniqueDeviceMemory> _uUniformBuffersMemory;
+		vk::UniqueDescriptorPool _uDescriptorPool;
 
 		/*
 		########  STRICT ORDERING SECTION END
 		*/
 
 		unsigned _currFrame;
+		std::vector<vk::DescriptorSet> _descriptorSets;
 		bool _framebufferResized;
 		vk::Queue _graphicsQueue;
 		std::vector<vk::Image> _images;
@@ -79,8 +84,10 @@ namespace hagl {
 		vk::Queue _presentQueue;
 		QueueFamilyIndices _queueIndices;
 		std::vector<const char*> _requiredDeviceExtensions = { vk::KHRSwapchainExtensionName };
+		void* _stagingBufferMapped;
 		vk::Extent2D _swapchainExtent;
 		vk::Format _swapchainFormat;
+		std::vector<void*> _uniformBuffersMapped;
 		std::vector<const char*> _validationLayers = { VALIDATION_LAYERS };
 		uint32_t _vertexCount;
 		size_t _vertexBufferSize;
@@ -103,12 +110,16 @@ namespace hagl {
 
 		void createCommandBuffer();
 		void createCommandPool();
+		void createDescriptorPool();
+		void createDescriptorSets();
+		void createDescriptorSetLayout();
 		void createFramebuffers();
 		void createGraphicsPipeline();
 		void createImageViews();
 		void createLogicalDevice();
 		void createSwapchain();
 		void createSyncObjects();
+		void createUniformBuffers();
 		void createVertexBuffers();
 		void createVkInstance();
 		uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
@@ -116,6 +127,7 @@ namespace hagl {
 		void recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex);
 		void recreateSwapchain();
 		void transferVertices(const std::vector<Vertex>& vertices);
+		void updateUniformBuffer();
 	};
 
 	static bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions);

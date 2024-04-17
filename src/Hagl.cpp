@@ -6,10 +6,13 @@
 #include "Vertex.h"
 #include "WindowSystem.h"
 
-const std::vector<hagl::Vertex> vertices = {
-{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+std::vector<hagl::Vertex> vertices = {
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{0.5f, -0.5f}, {1.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}},
 };
 
 int main(int argc, char* argv[])
