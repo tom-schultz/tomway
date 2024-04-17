@@ -60,6 +60,8 @@ namespace hagl {
 		std::vector<vk::UniqueSemaphore> _uImageAvailableSems;
 		std::vector<vk::UniqueSemaphore> _uRenderFinishedSems;
 		std::vector<vk::UniqueFence> _uInFlightFences;
+		vk::UniqueBuffer _uStagingBuffer;
+		vk::UniqueDeviceMemory _uStagingBufferMemory;
 		vk::UniqueBuffer _uVertexBuffer;
 		vk::UniqueDeviceMemory _uVertexBufferMemory;
 
@@ -85,9 +87,15 @@ namespace hagl {
 		bool _windowMinimized;
 		WindowSystem& _windowSystem;
 
+		void copyBuffer(
+			const vk::CommandBuffer& commandBuffer,
+			const vk::Buffer& src,
+			const vk::Buffer& dst,
+			vk::DeviceSize size);
+
 		void createBuffer(
 			size_t size,
-			vk::BufferUsageFlagBits usageFlags,
+			vk::BufferUsageFlags usageFlags,
 			vk::SharingMode sharingMode,
 			vk::MemoryPropertyFlags memoryPropertyFlags,
 			vk::UniqueBuffer& uBuffer,
@@ -101,6 +109,7 @@ namespace hagl {
 		void createLogicalDevice();
 		void createSwapchain();
 		void createSyncObjects();
+		void createVertexBuffers();
 		void createVkInstance();
 		uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 		void pickPhysicalDevice();

@@ -30,14 +30,7 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCoun
 		createCommandPool();
 		createCommandBuffer();
 		createSyncObjects();
-
-		createBuffer(
-			_vertexBufferSize,
-			vk::BufferUsageFlagBits::eVertexBuffer,
-			vk::SharingMode::eExclusive,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-			_uVertexBuffer,
-			_uVertexBufferMemory);
+		createVertexBuffers();
 	}
 	catch (std::exception e) {
 		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
@@ -52,9 +45,20 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCoun
 hagl::RenderSystem::~RenderSystem() {
 }
 
+
+void hagl::RenderSystem::copyBuffer(
+	const vk::CommandBuffer& commandBuffer,
+	const vk::Buffer& src,
+	const vk::Buffer& dst,
+	vk::DeviceSize size)
+{
+	vk::BufferCopy copyRegion(0, 0, size); // srcOffset, dstOffset, size
+	commandBuffer.copyBuffer(src, dst, copyRegion);
+}
+
 void hagl::RenderSystem::createBuffer(
 	size_t size,
-	vk::BufferUsageFlagBits usageFlags,
+	vk::BufferUsageFlags usageFlags,
 	vk::SharingMode sharingMode,
 	vk::MemoryPropertyFlags memoryPropertyFlags,
 	vk::UniqueBuffer& uBuffer,
@@ -341,6 +345,24 @@ void hagl::RenderSystem::createSyncObjects() {
 	}
 }
 
+void hagl::RenderSystem::createVertexBuffers() {
+	createBuffer(
+		_vertexBufferSize,
+		vk::BufferUsageFlagBits::eTransferSrc,
+		vk::SharingMode::eExclusive,
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+		_uStagingBuffer,
+		_uStagingBufferMemory);
+
+	createBuffer(
+		_vertexBufferSize,
+		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+		vk::SharingMode::eExclusive,
+		vk::MemoryPropertyFlagBits::eDeviceLocal,
+		_uVertexBuffer,
+		_uVertexBufferMemory);
+}
+
 void hagl::RenderSystem::createVkInstance() {
 	vk::ApplicationInfo info(
 		APP_NAME, // Application Name
@@ -374,8 +396,8 @@ void hagl::RenderSystem::drawFrame(
 		_windowMinimized = false;
 	}
 
-	_uDevice->waitForFences(*_uInFlightFences[_currFrame], vk::True, UINT64_MAX);
 	transferVertices(vertices);
+	_uDevice->waitForFences(*_uInFlightFences[_currFrame], vk::True, UINT64_MAX);
 
 	vk::Result result;
 	uint32_t imageIndex;
@@ -460,6 +482,8 @@ void hagl::RenderSystem::pickPhysicalDevice() {
 void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex) {
 	vk::CommandBufferBeginInfo beginInfo;
 	commandBuffer.begin(beginInfo);
+	// I'm not sure this belongs in *this* function, but this is functionally where it should happen
+	copyBuffer(*_uCommandBuffers[_currFrame], *_uStagingBuffer, *_uVertexBuffer, _vertexBufferSize);
 	vk::ClearValue clearValue = vk::ClearValue({ { 0.0f, 0.0f, 0.0f, 1.0f } });
 
 	vk::RenderPassBeginInfo renderPass({
@@ -510,9 +534,9 @@ inline void hagl::RenderSystem::resizeFramebuffer() {
 // TODO - use a different queue family for transfer operations
 // https://docs.vulkan.org/tutorial/latest/00_Introduction.html
 void hagl::RenderSystem::transferVertices(const std::vector<Vertex>& vertices) {
-	void* data = _uDevice->mapMemory(*_uVertexBufferMemory, 0, _vertexBufferSize);
+	void* data = _uDevice->mapMemory(*_uStagingBufferMemory, 0, _vertexBufferSize);
 	memcpy(data, vertices.data(), _vertexBufferSize);
-	_uDevice->unmapMemory(*_uVertexBufferMemory);
+	_uDevice->unmapMemory(*_uStagingBufferMemory);
 }
 
 #pragma region statics
