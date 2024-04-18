@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -90,6 +91,8 @@ void hagl::RenderSystem::createCommandBuffer() {
 		*_uCommandPool,
 		vk::CommandBufferLevel::ePrimary,
 		_maxFramesInFlight });
+
+	LOG_INFO("Command buffer created.");
 }
 
 void hagl::RenderSystem::createCommandPool() {
@@ -99,6 +102,8 @@ void hagl::RenderSystem::createCommandPool() {
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
 		queueFamIndices.graphicsFamily
 	});
+
+	LOG_INFO("Command pool created.");
 }
 
 void hagl::RenderSystem::createDescriptorSets() {
@@ -124,12 +129,15 @@ void hagl::RenderSystem::createDescriptorSets() {
 
 		_uDevice->updateDescriptorSets(descriptorWrite, nullptr);
 	}
+
+	LOG_INFO("Descriptor sets created.");
 }
 
 void hagl::RenderSystem::createDescriptorPool() {
 	vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer, _maxFramesInFlight);
 	vk::DescriptorPoolCreateInfo poolInfo({}, _maxFramesInFlight, poolSize); // Flags, max sets, pool sizes
 	_uDescriptorPool = _uDevice->createDescriptorPoolUnique(poolInfo);
+	LOG_INFO("Descriptor pool created.");
 }
 
 void hagl::RenderSystem::createDescriptorSetLayout() {
@@ -142,6 +150,7 @@ void hagl::RenderSystem::createDescriptorSetLayout() {
 
 	vk::DescriptorSetLayoutCreateInfo layoutInfo({}, transformLayoutBinding); // Flags, bindings
 	_uDescriptorSetLayout = _uDevice->createDescriptorSetLayoutUnique(layoutInfo);
+	LOG_INFO("Descriptor set layout created.");
 }
 
 void hagl::RenderSystem::createFramebuffers() {
@@ -160,6 +169,8 @@ void hagl::RenderSystem::createFramebuffers() {
 
 		_uFramebuffers[i] = _uDevice->createFramebufferUnique(createInfo);
 	}
+
+	LOG_INFO("Framebuffers created.");
 }
 
 void hagl::RenderSystem::createGraphicsPipeline() {
@@ -286,6 +297,7 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 
 	auto result = _uDevice->createGraphicsPipeline(nullptr, pipelineCreateInfo);
 	_uGraphicsPipeline = vk::UniquePipeline(result.value);
+	LOG_INFO("Graphics pipeline created.");
 }
 
 void hagl::RenderSystem::createImageViews() {
@@ -294,6 +306,8 @@ void hagl::RenderSystem::createImageViews() {
 	for (auto image : _images) {
 		_uImageViews.push_back(createImageView(_uDevice.get(), image, _swapchainFormat, vk::ImageAspectFlagBits::eColor, 1));
 	}
+
+	LOG_INFO("Image views created.");
 }
 
 void hagl::RenderSystem::createLogicalDevice() {
@@ -330,13 +344,14 @@ void hagl::RenderSystem::createLogicalDevice() {
 	_uDevice = _physicalDevice.createDeviceUnique(deviceCreateInfo);
 	_graphicsQueue = _uDevice->getQueue(_queueIndices.graphicsFamily, 0);
 	_presentQueue = _uDevice->getQueue(_queueIndices.presentFamily, 0);
+	LOG_INFO("Logical device created.");
 }
 
 void hagl::RenderSystem::createSwapchain() {
 	SwapchainSupportDetails details = {
-			_physicalDevice.getSurfaceCapabilitiesKHR(*_uSurface),
-			_physicalDevice.getSurfaceFormatsKHR(*_uSurface),
-			_physicalDevice.getSurfacePresentModesKHR(*_uSurface)
+		_physicalDevice.getSurfaceCapabilitiesKHR(*_uSurface),
+		_physicalDevice.getSurfaceFormatsKHR(*_uSurface),
+		_physicalDevice.getSurfacePresentModesKHR(*_uSurface)
 	};
 
 	vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(details.formats);
@@ -378,6 +393,7 @@ void hagl::RenderSystem::createSwapchain() {
 	_images = _uDevice->getSwapchainImagesKHR(*_uSwapchain);
 	_swapchainExtent = extent;
 	_swapchainFormat = surfaceFormat.format;
+	LOG_INFO("Swapchain created.");
 }
 
 void hagl::RenderSystem::createSyncObjects() {
@@ -390,6 +406,8 @@ void hagl::RenderSystem::createSyncObjects() {
 		_uRenderFinishedSems[i] = _uDevice->createSemaphoreUnique({});
 		_uInFlightFences[i] = _uDevice->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
 	}
+
+	LOG_INFO("Synchronization objects created.");
 }
 
 void hagl::RenderSystem::createUniformBuffers() {
@@ -409,6 +427,8 @@ void hagl::RenderSystem::createUniformBuffers() {
 
 		_uniformBuffersMapped[i] = _uDevice->mapMemory(*_uUniformBuffersMemory[i], 0, bufferSize);
 	}
+	
+	LOG_INFO("Uniform buffers created.");
 }
 
 void hagl::RenderSystem::createVertexBuffers() {
@@ -429,6 +449,8 @@ void hagl::RenderSystem::createVertexBuffers() {
 		vk::MemoryPropertyFlagBits::eDeviceLocal,
 		_uVertexBuffer,
 		_uVertexBufferMemory);
+
+	LOG_INFO("Vertex buffers created.");
 }
 
 void hagl::RenderSystem::createVkInstance() {
@@ -452,6 +474,7 @@ void hagl::RenderSystem::createVkInstance() {
 	);
 
 	_uInstance = vk::createInstanceUnique(appCreateInfo);
+	LOG_INFO("Vulkan instance created.");
 }
 
 void hagl::RenderSystem::drawFrame(
@@ -470,6 +493,8 @@ void hagl::RenderSystem::drawFrame(
 	vk::Result result;
 	uint32_t imageIndex;
 
+	// TODO - figure out how to make this faster when in FIFO mode due to integrated graphics or whatever
+	// https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
 	std::tie(result, imageIndex) = _uDevice->acquireNextImageKHR(
 		*_uSwapchain,
 		UINT64_MAX,
@@ -536,11 +561,11 @@ void hagl::RenderSystem::pickPhysicalDevice() {
 	}
 
 	for (auto device : devices) {
-
 		if (isDeviceSuitable(device, *_uSurface, _requiredDeviceExtensions)) {
 			_physicalDevice = device;
 			_msaaSamples = getMaxUsableSampleCount(device);
 			_queueIndices = findQueueFamilies(device, *_uSurface);
+			LOG_INFO("Physical device selected.");
 			return;
 		}
 	}
@@ -922,8 +947,7 @@ static bool hagl::isDeviceSuitable(const vk::PhysicalDevice& device, const vk::S
 	}
 
 	return (
-		(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu
-			|| deviceProperties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu)
+		(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
 		&& deviceFeatures.geometryShader
 		&& deviceFeatures.samplerAnisotropy
 		&& hagl::isQueueFamilyComplete(deviceIndices)
@@ -938,7 +962,6 @@ static bool hagl::isQueueFamilyComplete(const hagl::QueueFamilyIndices& indices)
 
 static std::vector<char> hagl::readShaderBytes(const std::string& filePath) {
 	std::ifstream file(filePath, std::ios::ate | std::ios::binary);
-	
 
 	if (!file.is_open()) {
 		throw std::runtime_error("Cannot find file to read!\n");
