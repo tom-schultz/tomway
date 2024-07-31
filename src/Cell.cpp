@@ -1,12 +1,12 @@
 #include "Cell.h"
 
-const std::vector<hagl::Vertex> hagl::Cell::baseVerts = {
-	{{-0.45f, -0.45f}, {1.0f, 0.0f, 0.0f}},
-	{{0.45f, -0.45f}, {1.0f, 0.0f, 0.0f}},
-	{{-0.45f, 0.45f}, {1.0f, 0.0f, 0.0f}},
-	{{0.45f, -0.45f}, {1.0f, 0.0f, 0.0f}},
-	{{0.45f, 0.45f}, {1.0f, 0.0f, 0.0f}},
-	{{-0.45f, 0.45f}, {1.0f, 0.0f, 0.0f}},
+const std::vector<hagl::Vertex> hagl::Cell::base_verts = {
+	{{-CELL_RADIUS, -CELL_RADIUS}, {1.0f, 0.0f, 0.0f}},
+	{{CELL_RADIUS, -CELL_RADIUS}, {1.0f, 0.0f, 0.0f}},
+	{{-CELL_RADIUS, CELL_RADIUS}, {1.0f, 0.0f, 0.0f}},
+	{{CELL_RADIUS, -CELL_RADIUS}, {1.0f, 0.0f, 0.0f}},
+	{{CELL_RADIUS, CELL_RADIUS}, {1.0f, 0.0f, 0.0f}},
+	{{-CELL_RADIUS, CELL_RADIUS}, {1.0f, 0.0f, 0.0f}},
 };
 
 hagl::Cell::Cell(float x, float y, bool alive)
@@ -16,18 +16,20 @@ hagl::Cell::Cell(float x, float y, bool alive)
 {
 }
 
-void hagl::Cell::getVertices(std::vector<hagl::Vertex>& vertices) {
+void hagl::Cell::get_vertices(std::vector<hagl::Vertex>& vertices) const
+{
 	if (_alive) {
-		std::vector<Vertex> verts(baseVerts);
+		const std::vector<Vertex> verts(base_verts);
 
+		constexpr auto pos_offset = 2 * CELL_RADIUS + CELL_BORDER;
 		for (auto vertex : verts) {
-			vertex.pos.x += _x;
-			vertex.pos.y += _y;
+			vertex.pos.x += _x * pos_offset;
+			vertex.pos.y += _y * pos_offset;
 			vertices.push_back(vertex);
 		}
 	}
 }
 
-uint32_t hagl::Cell::verticesPerCell() {
-	return (uint32_t)baseVerts.size();
+uint32_t hagl::Cell::vertices_per_cell() {
+	return static_cast<uint32_t>(base_verts.size());
 }

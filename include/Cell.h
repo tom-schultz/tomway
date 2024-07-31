@@ -8,12 +8,14 @@ namespace hagl {
 	{
 	public:
 		Cell(float x, float y, bool alive);
-		void getVertices(std::vector<Vertex>& vertices);
-		static uint32_t verticesPerCell();
+		void get_vertices(std::vector<Vertex>& vertices) const;
+		static uint32_t vertices_per_cell();
 	private:
+		static constexpr float CELL_RADIUS = 0.3f;
+		static constexpr float CELL_BORDER = 0.05f;
 		float _x, _y;
 		bool _alive;
 
-		const static std::vector<hagl::Vertex> baseVerts;
+		const static std::vector<Vertex> base_verts;
 	};
 }

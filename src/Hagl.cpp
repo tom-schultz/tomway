@@ -20,16 +20,22 @@ int main(int argc, char* argv[])
 {
 	std::vector<hagl::Cell> cells;
 
-	for (float i = -4; i < 5; i++) {
-		for (float j = -4; j < 5; j++) {
-			cells.push_back({ i, j, (rand() % 2 == 0) });
+	for (int i = -4; i < 5; i++) {
+		for (int j = -4; j < 5; j++) {
+			cells.emplace_back(i, j, rand() % 2 == 0);
 		}
 	}
 
-	hagl::WindowSystem windowSystem(1024, 768);
-	hagl::RenderSystem renderSystem(windowSystem, (uint32_t) cells.size() * hagl::Cell::verticesPerCell());
-	auto startTime = std::chrono::high_resolution_clock::now();
-	std::chrono::steady_clock::time_point lastTime = startTime;
+	hagl::WindowSystem window_system(1024, 768);
+	
+	const auto vert_count = static_cast<uint32_t>(cells.size()) * hagl::Cell::vertices_per_cell();
+	hagl::RenderSystem render_system(window_system, vert_count);
+	
+	auto start_time = std::chrono::high_resolution_clock::now();
+	std::chrono::steady_clock::time_point time_point = start_time;
+	uint32_t frame_accumulator = 0, last_sec_frames = 0;
+	float timer = 0;
+	
 	uint32_t width, height;
 	glm::vec3 pos(0);
 	
@@ -37,20 +43,17 @@ int main(int argc, char* argv[])
 	bool a = false;
 	bool s = false;
 	bool d = false;
-
-	uint32_t frameAccumulator = 0, lastSecFrames = 0;
-	float timer = 0;
+	bool esc = false;
 
 	while (true) {
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-		float dt = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - lastTime).count();
-		lastTime = currentTime;
+		auto current_time = std::chrono::high_resolution_clock::now();
+		const float dt = std::chrono::duration<float>(current_time - time_point).count();
+		time_point = current_time;
 
-		auto inputEvents = windowSystem.handle_events();
-		windowSystem.getVulkanFramebufferSize(width, height);
+		auto input_events = window_system.handle_events();
+		window_system.getVulkanFramebufferSize(width, height);
 
-		for (auto event : inputEvents) {
+		for (const auto event : input_events) {
 			switch (event.button) {
 			case hagl::InputButton::W:
 				w = event.type == hagl::InputEventType::BUTTON_DOWN;
@@ -64,6 +67,10 @@ int main(int argc, char* argv[])
 			case hagl::InputButton::D:
 				d = event.type == hagl::InputEventType::BUTTON_DOWN;
 				break;
+			case hagl::InputButton::ESCAPE:
+				esc = true;
+				break;
+			default:;
 			}
 		}
 
@@ -71,6 +78,11 @@ int main(int argc, char* argv[])
 		if (s) pos[1] -= 1.0f * dt;
 		if (a) pos[0] -= 1.0f * dt;
 		if (d) pos[0] += 1.0f * dt;
+
+		if (esc)
+		{
+			break;	
+		}
 
 		hagl::Transform transform;
 		transform.model = glm::translate(transform.model, pos);
@@ -83,28 +95,28 @@ int main(int argc, char* argv[])
 
 		transform.projection = glm::perspective(
 			glm::radians(45.0f),
-			width / (float)height,
+			static_cast<float>(width) / static_cast<float>(height),
 			0.1f,
 			1000.0f);
 
 		std::vector<hagl::Vertex> vertices;
-		vertices.reserve(cells.size() * hagl::Cell::verticesPerCell());
+		vertices.reserve(cells.size() * hagl::Cell::vertices_per_cell());
 
 		for (auto cell : cells) {
-			cell.getVertices(vertices);
+			cell.get_vertices(vertices);
 		}
 
-		renderSystem.drawFrame(transform, vertices, {});
+		render_system.drawFrame(transform, vertices, {});
 
-		frameAccumulator += 1;
+		frame_accumulator += 1;
 		timer += dt;
 
 		if (timer > 1.0f) {
-			LOG_INFO("FPS: %d", frameAccumulator - lastSecFrames);
-			lastSecFrames = frameAccumulator;
+			LOG_INFO("FPS: %d", frame_accumulator - last_sec_frames);
+			last_sec_frames = frame_accumulator;
 			timer = 0;
 		}
 	}
 
-	return 0;
+	exit(0);
 }

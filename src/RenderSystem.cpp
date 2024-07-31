@@ -387,7 +387,7 @@ void hagl::RenderSystem::createSwapchain() {
 		, vk::CompositeAlphaFlagBitsKHR::eOpaque
 		, presentMode
 		, true // clipped
-		, VK_NULL_HANDLE); // Old swapchain
+		, *_uSwapchain); // Old swapchain
 
 	_uSwapchain = _uDevice->createSwapchainKHRUnique(createInfo);
 	_images = _uDevice->getSwapchainImagesKHR(*_uSwapchain);
@@ -525,9 +525,14 @@ void hagl::RenderSystem::drawFrame(
 		*_uSwapchain,
 		imageIndex });
 
-	result = _presentQueue.presentKHR(presentInfo);
+	try
+	{
+		result = _presentQueue.presentKHR(presentInfo);
+	} catch (vk::OutOfDateKHRError) {
+		recreateSwapchain();
+	}
 
-	if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || _framebufferResized) {
+	if (result == vk::Result::eSuboptimalKHR || _framebufferResized) {
 		recreateSwapchain();
 	}
 
