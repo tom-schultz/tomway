@@ -194,8 +194,8 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 	vk::PipelineDynamicStateCreateInfo dynamicState({}, dynamicStates);
 
 	// Vertex input descriptions
-	auto bindingDesc = Vertex::getBindingDescription();
-	auto attributeDesc = Vertex::getAttributeDescriptions();
+	auto bindingDesc = Vertex::get_binding_description();
+	auto attributeDesc = Vertex::get_attribute_descriptions();
 
 	// How we pass input to the vertex shader
 	vk::PipelineVertexInputStateCreateInfo vertexInputState(

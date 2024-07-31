@@ -1,7 +1,7 @@
 #include "InputEvent.h"
 
-hagl::InputEventType hagl::toInputEventType(SDL_EventType sdlEventType) {
-	switch (sdlEventType)
+hagl::InputEventType hagl::to_input_event_type(SDL_EventType const& sdl_event_type) {
+	switch (sdl_event_type)  // NOLINT(clang-diagnostic-switch-enum)
 	{
 	case SDL_KEYUP:
 		return InputEventType::BUTTON_UP;
@@ -16,8 +16,8 @@ hagl::InputEventType hagl::toInputEventType(SDL_EventType sdlEventType) {
 	}
 }
 
-hagl::InputButton hagl::toInputButton(SDL_Keycode sdlKeycode) {
-	switch (sdlKeycode) {
+hagl::InputButton hagl::to_input_button(SDL_Keycode const& sdl_keycode) {
+	switch (sdl_keycode) {
 	case SDLK_w:
 		return InputButton::W;
 	case SDLK_a:
@@ -33,8 +33,8 @@ hagl::InputButton hagl::toInputButton(SDL_Keycode sdlKeycode) {
 	}
 }
 
-hagl::InputButton hagl::toInputButton(SDL_MouseButtonEvent sdlMouseButtonEvent) {
-	switch (sdlMouseButtonEvent.button) {
+hagl::InputButton hagl::to_input_button(SDL_MouseButtonEvent const& sdl_mouse_button_event) {
+	switch (sdl_mouse_button_event.button) {
 		case SDL_BUTTON_LEFT:
 		return InputButton::MOUSE_LEFT;
 	case SDL_BUTTON_RIGHT:

@@ -89,8 +89,8 @@ std::vector<hagl::InputEvent> hagl::WindowSystem::handle_events() {
 			exit(0);
 		case SDL_KEYDOWN:
 		case SDL_KEYUP: {
-			InputButton button = toInputButton(e.key.keysym.sym);
-			InputEventType type = toInputEventType((SDL_EventType)e.type);
+			InputButton button = to_input_button(e.key.keysym.sym);
+			InputEventType type = to_input_event_type((SDL_EventType)e.type);
 
 			if (button != InputButton::NONE) {
 				inputEvents.push_back({ type, button });
@@ -98,8 +98,8 @@ std::vector<hagl::InputEvent> hagl::WindowSystem::handle_events() {
 		}
 		case SDL_MOUSEBUTTONUP:
 		case SDL_MOUSEBUTTONDOWN: {
-			InputButton button = toInputButton(e.button);
-			InputEventType type = toInputEventType((SDL_EventType)e.type);
+			InputButton button = to_input_button(e.button);
+			InputEventType type = to_input_event_type((SDL_EventType)e.type);
 
 			if (button != InputButton::NONE) {
 				inputEvents.push_back({ type, button });

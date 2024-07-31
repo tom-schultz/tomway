@@ -28,7 +28,7 @@ namespace hagl {
 		int mouseY;
 	};
 
-	InputEventType toInputEventType(SDL_EventType sdlEventType);
-	InputButton toInputButton(SDL_Keycode sdlKeycode);
-	InputButton toInputButton(SDL_MouseButtonEvent sdlMouseButtonEvent);
+	InputEventType to_input_event_type(SDL_EventType const& sdl_event_type);
+	InputButton to_input_button(SDL_Keycode const& sdl_keycode);
+	InputButton to_input_button(SDL_MouseButtonEvent const& sdl_mouse_button_event);
 }

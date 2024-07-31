@@ -9,7 +9,7 @@ namespace hagl {
 		glm::vec2 pos;
 		glm::vec3 color;
 
-		static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
-		static vk::VertexInputBindingDescription getBindingDescription();
+		static std::array<vk::VertexInputAttributeDescription, 2> get_attribute_descriptions();
+		static vk::VertexInputBindingDescription get_binding_description();
 	};
 }
