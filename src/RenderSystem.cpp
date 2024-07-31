@@ -8,42 +8,42 @@
 #include "HaglUtility.h"
 #include "RenderSystem.h"
 
-hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCount, unsigned maxFramesInFlight)
-	: _currFrame(0),
-	_maxFramesInFlight(maxFramesInFlight),
-	_queueIndices(),
-	_swapchainFormat(),
-	_vertexCount(vertexCount),
-	_vertexBufferSize(vertexCount * sizeof(Vertex)),
-	_windowSystem(windowSystem)
+hagl::RenderSystem::RenderSystem(WindowSystem& window_system, uint32_t vertex_count, unsigned max_frames_in_flight)
+	: _curr_frame(0),
+	_max_frames_in_flight(max_frames_in_flight),
+	_queue_indices(),
+	_swapchain_format(),
+	_vertex_count(vertex_count),
+	_vertex_buffer_size(vertex_count * sizeof(Vertex)),
+	_window_system(window_system)
 {
 	try {
-		createVkInstance();
+		create_vk_instance();
 
-		_uSurface = _windowSystem.create_vulkan_surface(*_uInstance);
-		pickPhysicalDevice();
-		createLogicalDevice();
-		createSwapchain();
-		createImageViews();
-		_uRenderPass = createRenderPass(_physicalDevice, *_uDevice, _swapchainFormat, vk::SampleCountFlagBits::e1);
-		createDescriptorSetLayout();
-		createGraphicsPipeline();
-		createFramebuffers();
-		createCommandPool();
-		createCommandBuffer();
-		createSyncObjects();
-		createVertexBuffers();
-		createUniformBuffers();
-		createDescriptorPool();
-		createDescriptorSets();
+		_surface_u = _window_system.create_vulkan_surface(*_instance_u);
+		pick_physical_device();
+		create_logical_device();
+		create_swapchain();
+		create_image_views();
+		_render_pass_u = create_render_pass(_physical_device, *_unique_device_u, _swapchain_format, vk::SampleCountFlagBits::e1);
+		create_descriptor_set_layout();
+		create_graphics_pipeline();
+		create_framebuffers();
+		create_command_pool();
+		create_command_buffer();
+		create_sync_objects();
+		create_vertex_buffers();
+		create_uniform_buffers();
+		create_descriptor_pool();
+		create_descriptor_sets();
 	}
-	catch (std::exception e) {
-		LOG_ERROR(0, "Failed to initialize render system with error: %s", e.what());
-		throw e;
+	catch (std::exception const& e) {
+		LOG_ERROR("Failed to initialize render system with error: %s", e.what());
+		throw;
 	}
 
-	_windowSystem.register_framebuffer_resize_callback(std::bind(&RenderSystem::resizeFramebuffer, this));
-	_windowSystem.register_minimized_callback(std::bind(&RenderSystem::minimized, this));
+	_window_system.register_framebuffer_resize_callback([this] { resize_framebuffer(); });
+	_window_system.register_minimized_callback([this] { minimized(); });
 	LOG_INFO("Render system initialized.");
 }
 
@@ -51,164 +51,164 @@ hagl::RenderSystem::~RenderSystem() {
 }
 
 
-void hagl::RenderSystem::copyBuffer(
-	const vk::CommandBuffer& commandBuffer,
+void hagl::copy_buffer(
+	const vk::CommandBuffer& command_buffer,
 	const vk::Buffer& src,
 	const vk::Buffer& dst,
-	vk::DeviceSize size)
+	vk::DeviceSize const size)
 {
-	vk::BufferCopy copyRegion(0, 0, size); // srcOffset, dstOffset, size
-	commandBuffer.copyBuffer(src, dst, copyRegion);
+	vk::BufferCopy const copy_region(0, 0, size); // srcOffset, dstOffset, size
+	command_buffer.copyBuffer(src, dst, copy_region);
 }
 
-void hagl::RenderSystem::createBuffer(
-	size_t size,
-	vk::BufferUsageFlags usageFlags,
-	vk::SharingMode sharingMode,
-	vk::MemoryPropertyFlags memoryPropertyFlags,
-	vk::UniqueBuffer& uBuffer,
-	vk::UniqueDeviceMemory& uBufferMemory)
+void hagl::RenderSystem::create_buffer(
+	size_t const size,
+	vk::BufferUsageFlags const usage_flags,
+	vk::SharingMode const sharing_mode,
+	vk::MemoryPropertyFlags const memory_property_flags,
+	vk::UniqueBuffer& buffer_u,
+	vk::UniqueDeviceMemory& buffer_memory_u)
 {
-	vk::BufferCreateInfo bufferInfo(
+	vk::BufferCreateInfo const buffer_info(
 		{}, // Flags
 		size,
-		usageFlags,
-		sharingMode);
+		usage_flags,
+		sharing_mode);
 
-	uBuffer = _uDevice->createBufferUnique(bufferInfo);
-	auto memRequirements = _uDevice->getBufferMemoryRequirements(*uBuffer);
+	buffer_u = _unique_device_u->createBufferUnique(buffer_info);
+	auto const mem_requirements = _unique_device_u->getBufferMemoryRequirements(*buffer_u);
 
-	vk::MemoryAllocateInfo allocInfo(
-		memRequirements.size,
-		findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags));
+	vk::MemoryAllocateInfo const allocate_info(
+		mem_requirements.size,
+		find_memory_type(mem_requirements.memoryTypeBits, memory_property_flags));
 
-	uBufferMemory = _uDevice->allocateMemoryUnique(allocInfo);
-	_uDevice->bindBufferMemory(*uBuffer, *uBufferMemory, 0);
+	buffer_memory_u = _unique_device_u->allocateMemoryUnique(allocate_info);
+	_unique_device_u->bindBufferMemory(*buffer_u, *buffer_memory_u, 0);
 }
 
-void hagl::RenderSystem::createCommandBuffer() {
-	_uCommandBuffers = _uDevice->allocateCommandBuffersUnique({
-		*_uCommandPool,
+void hagl::RenderSystem::create_command_buffer() {
+	_command_buffers_u = _unique_device_u->allocateCommandBuffersUnique({
+		*_command_pool_u,
 		vk::CommandBufferLevel::ePrimary,
-		_maxFramesInFlight });
+		_max_frames_in_flight });
 
 	LOG_INFO("Command buffer created.");
 }
 
-void hagl::RenderSystem::createCommandPool() {
-	auto queueFamIndices = findQueueFamilies(_physicalDevice, *_uSurface);
+void hagl::RenderSystem::create_command_pool() {
+	auto queue_fam_indices = find_queue_families(_physical_device, *_surface_u);
 
-	_uCommandPool = _uDevice->createCommandPoolUnique({
+	_command_pool_u = _unique_device_u->createCommandPoolUnique({
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-		queueFamIndices.graphicsFamily
+		queue_fam_indices.graphics_family
 	});
 
 	LOG_INFO("Command pool created.");
 }
 
-void hagl::RenderSystem::createDescriptorSets() {
+void hagl::RenderSystem::create_descriptor_sets() {
 	// This line screams wrong at first glance - I'm taking a value in a resource handler and copying it
 	// multiple times in a vector! BUT, remember that the handler here doesn't call delete - it calls Vulkan
 	// Destroy commands. We don't actually *care* about the DescriptorSetLayout struct, it's a handle to the
 	// actual resource inside of Vulkan. We can copy the handle as many times as we like.
-	std::vector<vk::DescriptorSetLayout> layouts(_maxFramesInFlight, *_uDescriptorSetLayout);
-	vk::DescriptorSetAllocateInfo allocInfo(*_uDescriptorPool, layouts);
-	_descriptorSets = _uDevice->allocateDescriptorSets(allocInfo);
+	std::vector<vk::DescriptorSetLayout> layouts(_max_frames_in_flight, *_uDescriptorSetLayout);
+	vk::DescriptorSetAllocateInfo const allocate_info(*_descriptor_pool_u, layouts);
+	_descriptor_sets = _unique_device_u->allocateDescriptorSets(allocate_info);
 
-	for (uint32_t i = 0; i < _maxFramesInFlight; i++) {
-		vk::DescriptorBufferInfo bufferInfo(*_uUniformBuffers[i], 0, sizeof(Transform)); // Buffer, offset, range/size
+	for (uint32_t i = 0; i < _max_frames_in_flight; i++) {
+		vk::DescriptorBufferInfo buffer_info(*_uniform_buffers_u[i], 0, sizeof(Transform)); // Buffer, offset, range/size
 
-		vk::WriteDescriptorSet descriptorWrite(
-			_descriptorSets[i],
+		vk::WriteDescriptorSet descriptor_writes(
+			_descriptor_sets[i],
 			0, // Binding
 			0, // Array element
 			vk::DescriptorType::eUniformBuffer,
 			nullptr, // Image info
-			bufferInfo,
+			buffer_info,
 			nullptr); // Texel buffer view
 
-		_uDevice->updateDescriptorSets(descriptorWrite, nullptr);
+		_unique_device_u->updateDescriptorSets(descriptor_writes, nullptr);
 	}
 
 	LOG_INFO("Descriptor sets created.");
 }
 
-void hagl::RenderSystem::createDescriptorPool() {
-	vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer, _maxFramesInFlight);
-	vk::DescriptorPoolCreateInfo poolInfo({}, _maxFramesInFlight, poolSize); // Flags, max sets, pool sizes
-	_uDescriptorPool = _uDevice->createDescriptorPoolUnique(poolInfo);
+void hagl::RenderSystem::create_descriptor_pool() {
+	vk::DescriptorPoolSize pool_size(vk::DescriptorType::eUniformBuffer, _max_frames_in_flight);
+	vk::DescriptorPoolCreateInfo const pool_info({}, _max_frames_in_flight, pool_size); // Flags, max sets, pool sizes
+	_descriptor_pool_u = _unique_device_u->createDescriptorPoolUnique(pool_info);
 	LOG_INFO("Descriptor pool created.");
 }
 
-void hagl::RenderSystem::createDescriptorSetLayout() {
-	vk::DescriptorSetLayoutBinding transformLayoutBinding(
+void hagl::RenderSystem::create_descriptor_set_layout() {
+	vk::DescriptorSetLayoutBinding transform_layout_binding(
 		0, // Binding
 		vk::DescriptorType::eUniformBuffer,
 		1, // Descriptor count
 		vk::ShaderStageFlagBits::eVertex,
 		nullptr); // Immutable samplers
 
-	vk::DescriptorSetLayoutCreateInfo layoutInfo({}, transformLayoutBinding); // Flags, bindings
-	_uDescriptorSetLayout = _uDevice->createDescriptorSetLayoutUnique(layoutInfo);
+	vk::DescriptorSetLayoutCreateInfo layout_info({}, transform_layout_binding); // Flags, bindings
+	_uDescriptorSetLayout = _unique_device_u->createDescriptorSetLayoutUnique(layout_info);
 	LOG_INFO("Descriptor set layout created.");
 }
 
-void hagl::RenderSystem::createFramebuffers() {
-	_uFramebuffers.resize(_uImageViews.size());
+void hagl::RenderSystem::create_framebuffers() {
+	_framebuffers_u.resize(_image_views_u.size());
 
 	// TODO - create color and image framebuffers
 
-	for (int i = 0; i < _uFramebuffers.size(); i++) {
-		vk::FramebufferCreateInfo createInfo(
+	for (int i = 0; i < _framebuffers_u.size(); i++) {
+		vk::FramebufferCreateInfo create_info(
 			{}, // Flags
-			*_uRenderPass,
-			*_uImageViews[i], // Attachments
-			_swapchainExtent.width,
-			_swapchainExtent.height,
+			*_render_pass_u,
+			*_image_views_u[i], // Attachments
+			_swapchain_extent.width,
+			_swapchain_extent.height,
 			1); // Layers
 
-		_uFramebuffers[i] = _uDevice->createFramebufferUnique(createInfo);
+		_framebuffers_u[i] = _unique_device_u->createFramebufferUnique(create_info);
 	}
 
 	LOG_INFO("Framebuffers created.");
 }
 
-void hagl::RenderSystem::createGraphicsPipeline() {
+void hagl::RenderSystem::create_graphics_pipeline() {
 	// TODO - make this configurable, probably a list of shaders to create or something
-	std::vector<char> _fragShaderBytes = readShaderBytes("shaders/frag.spv");
-	std::vector<char> _vertShaderBytes = readShaderBytes("shaders/vert.spv");
+	std::vector<char> frag_shader_bytes = read_shader_bytes("shaders/frag.spv");
+	std::vector<char> vert_shader_bytes = read_shader_bytes("shaders/vert.spv");
 
-	vk::UniqueShaderModule uFragShaderModule = createShaderModule(*_uDevice, _fragShaderBytes);
-	vk::UniqueShaderModule uVertShaderModule = createShaderModule(*_uDevice, _vertShaderBytes);
+	vk::UniqueShaderModule frag_shader_module_u = create_shader_module(*_unique_device_u, frag_shader_bytes);
+	vk::UniqueShaderModule vert_shader_module_u = create_shader_module(*_unique_device_u, vert_shader_bytes);
 
-	vk::PipelineShaderStageCreateInfo fragStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, *uFragShaderModule, "main");
-	vk::PipelineShaderStageCreateInfo vertStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, *uVertShaderModule, "main");
+	vk::PipelineShaderStageCreateInfo frag_stage_create_info({}, vk::ShaderStageFlagBits::eFragment, *frag_shader_module_u, "main");
+	vk::PipelineShaderStageCreateInfo vert_stage_create_info({}, vk::ShaderStageFlagBits::eVertex, *vert_shader_module_u, "main");
 
-	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages{ vertStageCreateInfo, fragStageCreateInfo };
+	std::vector<vk::PipelineShaderStageCreateInfo> shader_stages{ vert_stage_create_info, frag_stage_create_info };
 
-	std::vector<vk::DynamicState> dynamicStates{
+	std::vector<vk::DynamicState> dynamic_states{
 		vk::DynamicState::eViewport,
 		vk::DynamicState::eScissor
 	};
 
-	vk::PipelineDynamicStateCreateInfo dynamicState({}, dynamicStates);
+	vk::PipelineDynamicStateCreateInfo dynamic_state({}, dynamic_states);
 
 	// Vertex input descriptions
-	auto bindingDesc = Vertex::get_binding_description();
-	auto attributeDesc = Vertex::get_attribute_descriptions();
+	auto binding_desc = Vertex::get_binding_description();
+	auto attribute_desc = Vertex::get_attribute_descriptions();
 
 	// How we pass input to the vertex shader
-	vk::PipelineVertexInputStateCreateInfo vertexInputState(
+	vk::PipelineVertexInputStateCreateInfo vertex_input_state(
 		{}, // Flags
-		bindingDesc,
-		attributeDesc);
+		binding_desc,
+		attribute_desc);
 
-	vk::PipelineInputAssemblyStateCreateInfo inputAssembly(
+	vk::PipelineInputAssemblyStateCreateInfo input_assembly(
 		{}, // Flags
 		vk::PrimitiveTopology::eTriangleList, //Topology
 		vk::False); // Primitive restart
 
-	vk::PipelineViewportStateCreateInfo viewportState(
+	vk::PipelineViewportStateCreateInfo viewport_state(
 		{}, // Flags
 		1, // Viewport count
 		nullptr, // Viewports, null here because we're setting them dynamically
@@ -258,7 +258,7 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 		*_uDescriptorSetLayout, // Descriptor set layouts
 		nullptr); // Push constant ranges
 
-	_uPipelineLayout = _uDevice->createPipelineLayoutUnique(pipelineLayoutInfo);
+	_pipeline_layout_u = _unique_device_u->createPipelineLayoutUnique(pipelineLayoutInfo);
 
 	// TODO - Depth stencil create info
 	/*
@@ -278,50 +278,50 @@ void hagl::RenderSystem::createGraphicsPipeline() {
 
 	vk::GraphicsPipelineCreateInfo pipelineCreateInfo(
 		{}, // Flags
-		(uint32_t)shaderStages.size(),
-		shaderStages.data(),
-		&vertexInputState, // Vertex input state
-		&inputAssembly,
+		(uint32_t)shader_stages.size(),
+		shader_stages.data(),
+		&vertex_input_state, // Vertex input state
+		&input_assembly,
 		nullptr, // Tesselation state create info
-		&viewportState,
+		&viewport_state,
 		&rasterizer,
 		&multisampling,
 		nullptr, // Depth stencil state
 		&colorBlending,
-		&dynamicState,
-		*_uPipelineLayout,
-		*_uRenderPass,
+		&dynamic_state,
+		*_pipeline_layout_u,
+		*_render_pass_u,
 		0, // Subpass
 		nullptr, // Base pipeline handle
 		-1); // Base pipeline index
 
-	auto result = _uDevice->createGraphicsPipeline(nullptr, pipelineCreateInfo);
-	_uGraphicsPipeline = vk::UniquePipeline(result.value);
+	auto result = _unique_device_u->createGraphicsPipeline(nullptr, pipelineCreateInfo);
+	_graphics_pipeline_u = vk::UniquePipeline(result.value);
 	LOG_INFO("Graphics pipeline created.");
 }
 
-void hagl::RenderSystem::createImageViews() {
-	_uImageViews.clear();
+void hagl::RenderSystem::create_image_views() {
+	_image_views_u.clear();
 
 	for (auto image : _images) {
-		_uImageViews.push_back(createImageView(_uDevice.get(), image, _swapchainFormat, vk::ImageAspectFlagBits::eColor, 1));
+		_image_views_u.push_back(create_image_view(_unique_device_u.get(), image, _swapchain_format, vk::ImageAspectFlagBits::eColor, 1));
 	}
 
 	LOG_INFO("Image views created.");
 }
 
-void hagl::RenderSystem::createLogicalDevice() {
-	if (_validationLayers.size() > 0 && !checkValidationLayerSupport(_validationLayers)) {
+void hagl::RenderSystem::create_logical_device() {
+	if (_validation_layers.size() > 0 && !check_validation_layer_support(_validation_layers)) {
 		throw new std::runtime_error("Requested validation layers not available!");
 	}
 
 	vk::PhysicalDeviceFeatures deviceFeatures{};
 	deviceFeatures.samplerAnisotropy = true;
 
-	std::vector<unsigned> queueFams = { _queueIndices.graphicsFamily };
+	std::vector<unsigned> queueFams = { _queue_indices.graphics_family };
 
-	if (_queueIndices.graphicsFamily != _queueIndices.presentFamily) {
-		queueFams.push_back(_queueIndices.presentFamily);
+	if (_queue_indices.graphics_family != _queue_indices.present_family) {
+		queueFams.push_back(_queue_indices.present_family);
 	}
 
 	std::vector<vk::DeviceQueueCreateInfo> createInfos(queueFams.size());
@@ -336,45 +336,45 @@ void hagl::RenderSystem::createLogicalDevice() {
 	vk::DeviceCreateInfo deviceCreateInfo(
 		{}, // Flags
 		(uint32_t)createInfos.size(), createInfos.data(), // Queue create infos
-		(uint32_t)_validationLayers.size(), _validationLayers.data(), // Enabled layers
-		(uint32_t)_requiredDeviceExtensions.size(), _requiredDeviceExtensions.data(), // Extensions
+		(uint32_t)_validation_layers.size(), _validation_layers.data(), // Enabled layers
+		(uint32_t)_required_device_extensions.size(), _required_device_extensions.data(), // Extensions
 		&deviceFeatures, // Device features
 		NULL); // pNext
 
-	_uDevice = _physicalDevice.createDeviceUnique(deviceCreateInfo);
-	_graphicsQueue = _uDevice->getQueue(_queueIndices.graphicsFamily, 0);
-	_presentQueue = _uDevice->getQueue(_queueIndices.presentFamily, 0);
+	_unique_device_u = _physical_device.createDeviceUnique(deviceCreateInfo);
+	_graphics_queue = _unique_device_u->getQueue(_queue_indices.graphics_family, 0);
+	_present_queue = _unique_device_u->getQueue(_queue_indices.present_family, 0);
 	LOG_INFO("Logical device created.");
 }
 
-void hagl::RenderSystem::createSwapchain() {
+void hagl::RenderSystem::create_swapchain() {
 	SwapchainSupportDetails details = {
-		_physicalDevice.getSurfaceCapabilitiesKHR(*_uSurface),
-		_physicalDevice.getSurfaceFormatsKHR(*_uSurface),
-		_physicalDevice.getSurfacePresentModesKHR(*_uSurface)
+		_physical_device.getSurfaceCapabilitiesKHR(*_surface_u),
+		_physical_device.getSurfaceFormatsKHR(*_surface_u),
+		_physical_device.getSurfacePresentModesKHR(*_surface_u)
 	};
 
-	vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(details.formats);
-	vk::PresentModeKHR presentMode = chooseSwapPresentMode(details.presentModes);
-	vk::Extent2D extent = chooseSwapExtent(_windowSystem, details.capabilities);
+	vk::SurfaceFormatKHR surfaceFormat = choose_swap_surface_format(details.formats);
+	vk::PresentModeKHR presentMode = choose_swap_present_mode(details.present_modes);
+	vk::Extent2D extent = choose_swap_extent(_window_system, details.capabilities);
 	uint32_t imageCount = details.capabilities.minImageCount + 1;
 
 	imageCount = imageCount < details.capabilities.maxImageCount
 		? imageCount
 		: details.capabilities.maxImageCount;
 
-	vk::SharingMode sharingMode = _queueIndices.graphicsFamily != _queueIndices.presentFamily
+	vk::SharingMode sharingMode = _queue_indices.graphics_family != _queue_indices.present_family
 		? vk::SharingMode::eConcurrent
 		: vk::SharingMode::eExclusive;
 
 	uint32_t queueFamilyIndices[] = {
-		_queueIndices.graphicsFamily,
-		_queueIndices.presentFamily
+		_queue_indices.graphics_family,
+		_queue_indices.present_family
 	};
 
 	vk::SwapchainCreateInfoKHR createInfo(
 		{} // flags
-		, * _uSurface
+		, * _surface_u
 		, imageCount // minImageCount
 		, surfaceFormat.format
 		, surfaceFormat.colorSpace
@@ -387,73 +387,73 @@ void hagl::RenderSystem::createSwapchain() {
 		, vk::CompositeAlphaFlagBitsKHR::eOpaque
 		, presentMode
 		, true // clipped
-		, *_uSwapchain); // Old swapchain
+		, *_swapchain_u); // Old swapchain
 
-	_uSwapchain = _uDevice->createSwapchainKHRUnique(createInfo);
-	_images = _uDevice->getSwapchainImagesKHR(*_uSwapchain);
-	_swapchainExtent = extent;
-	_swapchainFormat = surfaceFormat.format;
+	_swapchain_u = _unique_device_u->createSwapchainKHRUnique(createInfo);
+	_images = _unique_device_u->getSwapchainImagesKHR(*_swapchain_u);
+	_swapchain_extent = extent;
+	_swapchain_format = surfaceFormat.format;
 	LOG_INFO("Swapchain created.");
 }
 
-void hagl::RenderSystem::createSyncObjects() {
-	_uImageAvailableSems.resize(_maxFramesInFlight);
-	_uRenderFinishedSems.resize(_maxFramesInFlight);
-	_uInFlightFences.resize(_maxFramesInFlight);
+void hagl::RenderSystem::create_sync_objects() {
+	_image_available_sems_u.resize(_max_frames_in_flight);
+	_render_finished_sems_u.resize(_max_frames_in_flight);
+	_in_flight_fences_u.resize(_max_frames_in_flight);
 
-	for (unsigned i = 0; i < _maxFramesInFlight; i++) {
-		_uImageAvailableSems[i] = _uDevice->createSemaphoreUnique({});
-		_uRenderFinishedSems[i] = _uDevice->createSemaphoreUnique({});
-		_uInFlightFences[i] = _uDevice->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
+	for (unsigned i = 0; i < _max_frames_in_flight; i++) {
+		_image_available_sems_u[i] = _unique_device_u->createSemaphoreUnique({});
+		_render_finished_sems_u[i] = _unique_device_u->createSemaphoreUnique({});
+		_in_flight_fences_u[i] = _unique_device_u->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
 	}
 
 	LOG_INFO("Synchronization objects created.");
 }
 
-void hagl::RenderSystem::createUniformBuffers() {
+void hagl::RenderSystem::create_uniform_buffers() {
 	vk::DeviceSize bufferSize = sizeof(Transform);
-	_uUniformBuffers.resize(_maxFramesInFlight);
-	_uUniformBuffersMemory.resize(_maxFramesInFlight);
-	_uniformBuffersMapped.resize(_maxFramesInFlight);
+	_uniform_buffers_u.resize(_max_frames_in_flight);
+	_uniform_buffers_memory_u.resize(_max_frames_in_flight);
+	_uniform_buffers_mapped.resize(_max_frames_in_flight);
 
-	for (size_t i = 0; i < _maxFramesInFlight; i++) {
-		createBuffer(
+	for (size_t i = 0; i < _max_frames_in_flight; i++) {
+		create_buffer(
 			bufferSize,
 			vk::BufferUsageFlagBits::eUniformBuffer,
 			vk::SharingMode::eExclusive,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-			_uUniformBuffers[i],
-			_uUniformBuffersMemory[i]);
+			_uniform_buffers_u[i],
+			_uniform_buffers_memory_u[i]);
 
-		_uniformBuffersMapped[i] = _uDevice->mapMemory(*_uUniformBuffersMemory[i], 0, bufferSize);
+		_uniform_buffers_mapped[i] = _unique_device_u->mapMemory(*_uniform_buffers_memory_u[i], 0, bufferSize);
 	}
 	
 	LOG_INFO("Uniform buffers created.");
 }
 
-void hagl::RenderSystem::createVertexBuffers() {
-	createBuffer(
-		_vertexBufferSize,
+void hagl::RenderSystem::create_vertex_buffers() {
+	create_buffer(
+		_vertex_buffer_size,
 		vk::BufferUsageFlagBits::eTransferSrc,
 		vk::SharingMode::eExclusive,
 		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-		_uStagingBuffer,
-		_uStagingBufferMemory);
+		_staging_buffer_u,
+		_staging_buffer_memory_u);
 
-	_stagingBufferMapped = _uDevice->mapMemory(*_uStagingBufferMemory, 0, _vertexBufferSize);
+	_staging_buffer_mapped = _unique_device_u->mapMemory(*_staging_buffer_memory_u, 0, _vertex_buffer_size);
 
-	createBuffer(
-		_vertexBufferSize,
+	create_buffer(
+		_vertex_buffer_size,
 		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
 		vk::SharingMode::eExclusive,
 		vk::MemoryPropertyFlagBits::eDeviceLocal,
-		_uVertexBuffer,
-		_uVertexBufferMemory);
+		_vertex_buffer_u,
+		_vertex_buffer_memory_u);
 
 	LOG_INFO("Vertex buffers created.");
 }
 
-void hagl::RenderSystem::createVkInstance() {
+void hagl::RenderSystem::create_vk_instance() {
 	vk::ApplicationInfo info(
 		APP_NAME, // Application Name
 		1, // Application version
@@ -462,88 +462,88 @@ void hagl::RenderSystem::createVkInstance() {
 		VK_API_VERSION_1_3 // API Version
 	);
 
-	auto requiredInstanceExtensions = _windowSystem.get_extensions();
+	auto requiredInstanceExtensions = _window_system.get_extensions();
 
 	vk::InstanceCreateInfo appCreateInfo(
 		{}, // flags
 		&info, // Application Info
-		(uint32_t)_validationLayers.size(), // Enable layer count
-		_validationLayers.data(), // Enabled layer names
+		(uint32_t)_validation_layers.size(), // Enable layer count
+		_validation_layers.data(), // Enabled layer names
 		(uint32_t)requiredInstanceExtensions.size(), // Extension count
 		requiredInstanceExtensions.data() // Extension names
 	);
 
-	_uInstance = vk::createInstanceUnique(appCreateInfo);
+	_instance_u = vk::createInstanceUnique(appCreateInfo);
 	LOG_INFO("Vulkan instance created.");
 }
 
-void hagl::RenderSystem::drawFrame(
+void hagl::RenderSystem::draw_frame(
 	Transform transform,
 	const std::vector<Vertex>& vertices,
 	const std::vector<uint32_t> indices)
 {
-	if (_windowMinimized) {
-		_windowSystem.wait_while_minimized();
-		_windowMinimized = false;
+	if (_window_minimized) {
+		_window_system.wait_while_minimized();
+		_window_minimized = false;
 	}
 
-	transferVertices(vertices);
-	_uDevice->waitForFences(*_uInFlightFences[_currFrame], vk::True, UINT64_MAX);
+	transfer_vertices(vertices);
+	_unique_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
 
 	vk::Result result;
 	uint32_t imageIndex;
 
 	// TODO - figure out how to make this faster when in FIFO mode due to integrated graphics or whatever
 	// https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
-	std::tie(result, imageIndex) = _uDevice->acquireNextImageKHR(
-		*_uSwapchain,
+	std::tie(result, imageIndex) = _unique_device_u->acquireNextImageKHR(
+		*_swapchain_u,
 		UINT64_MAX,
-		*_uImageAvailableSems[_currFrame],
+		*_image_available_sems_u[_curr_frame],
 		nullptr);
 
 	if (result == vk::Result::eErrorOutOfDateKHR) {
-		recreateSwapchain();
+		recreate_swapchain();
 		return;
 	}
 
-	_uDevice->resetFences(*_uInFlightFences[_currFrame]);
-	_uCommandBuffers[_currFrame]->reset();
-	updateUniformBuffer(transform);
-	recordCommandBuffer(*_uCommandBuffers[_currFrame], imageIndex);
+	_unique_device_u->resetFences(*_in_flight_fences_u[_curr_frame]);
+	_command_buffers_u[_curr_frame]->reset();
+	update_uniform_buffer(transform);
+	record_command_buffer(*_command_buffers_u[_curr_frame], imageIndex);
 	vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
 	vk::SubmitInfo submitInfo({
-		*_uImageAvailableSems[_currFrame],
+		*_image_available_sems_u[_curr_frame],
 		waitDstStage,
-		*_uCommandBuffers[_currFrame],
-		*_uRenderFinishedSems[_currFrame]});
+		*_command_buffers_u[_curr_frame],
+		*_render_finished_sems_u[_curr_frame]});
 
-	_graphicsQueue.submit(submitInfo, *_uInFlightFences[_currFrame]);
+	_graphics_queue.submit(submitInfo, *_in_flight_fences_u[_curr_frame]);
 
 	vk::PresentInfoKHR presentInfo({
-		*_uRenderFinishedSems[_currFrame],
-		*_uSwapchain,
+		*_render_finished_sems_u[_curr_frame],
+		*_swapchain_u,
 		imageIndex });
 
 	try
 	{
-		result = _presentQueue.presentKHR(presentInfo);
+		result = _present_queue.presentKHR(presentInfo);
 	} catch (vk::OutOfDateKHRError) {
-		recreateSwapchain();
+		recreate_swapchain();
 	}
 
-	if (result == vk::Result::eSuboptimalKHR || _framebufferResized) {
-		recreateSwapchain();
+	if (result == vk::Result::eSuboptimalKHR || _framebuffer_resized) {
+		recreate_swapchain();
 	}
 
-	_currFrame = (_currFrame + 1) % _maxFramesInFlight;
+	_curr_frame = (_curr_frame + 1) % _max_frames_in_flight;
 }
 
-uint32_t hagl::RenderSystem::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
-	auto memProperties = _physicalDevice.getMemoryProperties();
+uint32_t hagl::RenderSystem::find_memory_type(uint32_t type_filter, vk::MemoryPropertyFlags properties) {
+	auto memProperties = _physical_device.getMemoryProperties();
 
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i))
+		if ((type_filter & (1 << i))
 			&& (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
 		{
 			return i;
@@ -554,22 +554,22 @@ uint32_t hagl::RenderSystem::findMemoryType(uint32_t typeFilter, vk::MemoryPrope
 }
 
 void hagl::RenderSystem::minimized() {
-	_windowMinimized = true;
+	_window_minimized = true;
 }
 
-void hagl::RenderSystem::pickPhysicalDevice() {
+void hagl::RenderSystem::pick_physical_device() {
 	uint32_t deviceCount = 0;
-	auto devices = _uInstance->enumeratePhysicalDevices();
+	auto devices = _instance_u->enumeratePhysicalDevices();
 
 	if (devices.size() == 0) {
 		throw std::runtime_error("Failed to find a GPU with Vulkan support!");
 	}
 
 	for (auto device : devices) {
-		if (isDeviceSuitable(device, *_uSurface, _requiredDeviceExtensions)) {
-			_physicalDevice = device;
-			_msaaSamples = getMaxUsableSampleCount(device);
-			_queueIndices = findQueueFamilies(device, *_uSurface);
+		if (is_device_suitable(device, *_surface_u, _required_device_extensions)) {
+			_physical_device = device;
+			_msaa_samples = get_max_usable_sample_count(device);
+			_queue_indices = find_queue_families(device, *_surface_u);
 			LOG_INFO("Physical device selected.");
 			return;
 		}
@@ -578,80 +578,81 @@ void hagl::RenderSystem::pickPhysicalDevice() {
 	throw new std::runtime_error("Could not find a suitable GPU!");
 }
 
-void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, uint32_t imageIndex) {
+void hagl::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buffer, uint32_t image_index) {
 	vk::CommandBufferBeginInfo beginInfo;
-	commandBuffer.begin(beginInfo);
+	command_buffer.begin(beginInfo);
 	// I'm not sure this belongs in *this* function, but this is functionally where it should happen
-	copyBuffer(*_uCommandBuffers[_currFrame], *_uStagingBuffer, *_uVertexBuffer, _vertexBufferSize);
-	vk::ClearValue clearValue = vk::ClearValue({ { 0.0f, 0.0f, 0.0f, 1.0f } });
+	copy_buffer(*_command_buffers_u[_curr_frame], *_staging_buffer_u, *_vertex_buffer_u, _vertex_buffer_size);
+	constexpr vk::ClearColorValue clear_color_value = vk::ClearColorValue { 0.0f, 0.0f, 0.0f, 1.0f };
+	vk::ClearValue clear_value = vk::ClearValue(clear_color_value);
 
-	vk::RenderPassBeginInfo renderPass({
-		*_uRenderPass,
-		*_uFramebuffers[imageIndex],
-		{ vk::Offset2D(0, 0), _swapchainExtent }, // Render area
-		clearValue });
+	vk::RenderPassBeginInfo render_pass({
+		*_render_pass_u,
+		*_framebuffers_u[image_index],
+		{ vk::Offset2D(0, 0), _swapchain_extent }, // Render area
+		clear_value });
 
-	commandBuffer.beginRenderPass(renderPass, vk::SubpassContents::eInline);
-	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_uGraphicsPipeline);
-	commandBuffer.bindVertexBuffers(0, *_uVertexBuffer, { 0 }); // First binding, buffer, offsets
+	command_buffer.beginRenderPass(render_pass, vk::SubpassContents::eInline);
+	command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_graphics_pipeline_u);
+	command_buffer.bindVertexBuffers(0, *_vertex_buffer_u, { 0 }); // First binding, buffer, offsets
 
-	vk::Viewport viewport({
+	vk::Viewport viewport {
 		0, 0, // x and y
-		static_cast<float>(_swapchainExtent.width),
-		static_cast<float>(_swapchainExtent.height),
+		static_cast<float>(_swapchain_extent.width),
+		static_cast<float>(_swapchain_extent.height),
 		0.0f, // Min depth
-		1.0f }); // Max depth
+		1.0f }; // Max depth
 		
-	commandBuffer.setViewport(0, viewport);
+	command_buffer.setViewport(0, viewport);
 
-	vk::Rect2D scissor({ 0, 0 }, _swapchainExtent);
-	commandBuffer.setScissor(0, scissor);
+	vk::Rect2D scissor({ 0, 0 }, _swapchain_extent);
+	command_buffer.setScissor(0, scissor);
 
-	commandBuffer.bindDescriptorSets(
+	command_buffer.bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
-		*_uPipelineLayout,
+		*_pipeline_layout_u,
 		0, // First set
-		_descriptorSets[_currFrame],
+		_descriptor_sets[_curr_frame],
 		nullptr); // Dynamic offsets
 
-	commandBuffer.draw(_vertexCount, 1, 0, 0); // Vertex count, instance count, first vertex, first instance
-	commandBuffer.endRenderPass();
-	commandBuffer.end();
+	command_buffer.draw(_vertex_count, 1, 0, 0); // Vertex count, instance count, first vertex, first instance
+	command_buffer.endRenderPass();
+	command_buffer.end();
 }
 
-void hagl::RenderSystem::recreateSwapchain() {
+void hagl::RenderSystem::recreate_swapchain() {
 	LOG_INFO("Resizing framebuffer!");
-	_windowSystem.wait_while_minimized(); // Probably unnecessary, but it's safe
-	_framebufferResized = false;
-	_windowMinimized = false;
+	_window_system.wait_while_minimized(); // Probably unnecessary, but it's safe
+	_framebuffer_resized = false;
+	_window_minimized = false;
 
-	_uDevice->waitIdle();
+	_unique_device_u->waitIdle();
 
 	// TODO - try recreating the swap chain while the old one is in-flight!
 
-	createSwapchain();
-	createImageViews();
-	createFramebuffers();
+	create_swapchain();
+	create_image_views();
+	create_framebuffers();
 }
 
-inline void hagl::RenderSystem::resizeFramebuffer() {
-	_framebufferResized = true;
+inline void hagl::RenderSystem::resize_framebuffer() {
+	_framebuffer_resized = true;
 }
 
 // TODO - use a different queue family for transfer operations
 // https://docs.vulkan.org/tutorial/latest/00_Introduction.html
-void hagl::RenderSystem::transferVertices(const std::vector<Vertex>& vertices) {
-	memcpy(_stagingBufferMapped, vertices.data(), _vertexBufferSize);
+void hagl::RenderSystem::transfer_vertices(const std::vector<Vertex>& vertices) {
+	memcpy(_staging_buffer_mapped, vertices.data(), _vertex_buffer_size);
 }
 
-void hagl::RenderSystem::updateUniformBuffer(Transform transform) {
+void hagl::RenderSystem::update_uniform_buffer(Transform transform) {
 	transform.projection[1][1] *= -1;
-	memcpy(_uniformBuffersMapped[_currFrame], &transform, sizeof(transform));
+	memcpy(_uniform_buffers_mapped[_curr_frame], &transform, sizeof(transform));
 }
 
 #pragma region statics
 
-static bool hagl::checkDeviceExtensionSupport(const vk::PhysicalDevice& device, std::vector<const char*> requiredDeviceExtensions) {
+static bool hagl::check_device_extension_support(const vk::PhysicalDevice& device, std::vector<const char*> required_device_extensions) {
 	auto deviceExtensions = device.enumerateDeviceExtensionProperties();
 	std::vector<std::string> supported;
 
@@ -659,7 +660,7 @@ static bool hagl::checkDeviceExtensionSupport(const vk::PhysicalDevice& device, 
 		supported.push_back(std::string((char*)ext.extensionName));
 	}
 	
-	for (auto reqExtension : requiredDeviceExtensions) {
+	for (auto reqExtension : required_device_extensions) {
 		bool found = false;
 
 		for (auto devExtension : deviceExtensions) {
@@ -674,14 +675,14 @@ static bool hagl::checkDeviceExtensionSupport(const vk::PhysicalDevice& device, 
 	return true;
 }
 
-static bool hagl::checkValidationLayerSupport(const std::vector<const char*>& validationLayers) {
+static bool hagl::check_validation_layer_support(const std::vector<const char*>& validation_layers) {
 	auto supportedLayers = vk::enumerateInstanceLayerProperties();
 
-	for (auto reqLayer : validationLayers) {
+	for (auto reqLayer : validation_layers) {
 		bool found = false;
 
 		for (auto supportedLayer : supportedLayers) {
-			found = found || strcmp(supportedLayer.layerName, reqLayer);
+			found = found || strcmp(supportedLayer.layerName, reqLayer) == 0;
 		}
 
 		if (!found) {
@@ -692,7 +693,7 @@ static bool hagl::checkValidationLayerSupport(const std::vector<const char*>& va
 	return true;
 }
 
-static vk::Extent2D hagl::chooseSwapExtent(const hagl::WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities) {
+static vk::Extent2D hagl::choose_swap_extent(const hagl::WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities) {
 	if (capabilities.currentExtent.width != UINT32_MAX) {
 		return capabilities.currentExtent;
 	}
@@ -725,7 +726,7 @@ static vk::Extent2D hagl::chooseSwapExtent(const hagl::WindowSystem& windowSyste
 	}
 }
 
-static vk::PresentModeKHR hagl::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> presentModes) {
+static vk::PresentModeKHR hagl::choose_swap_present_mode(const std::vector<vk::PresentModeKHR> presentModes) {
 	for (auto mode : presentModes) {
 		if (mode == vk::PresentModeKHR::eMailbox) {
 			return mode;
@@ -735,7 +736,7 @@ static vk::PresentModeKHR hagl::chooseSwapPresentMode(const std::vector<vk::Pres
 	return vk::PresentModeKHR::eFifo;
 }
 
-static vk::SurfaceFormatKHR hagl::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> formats) {
+static vk::SurfaceFormatKHR hagl::choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR> formats) {
 
 	for (auto format : formats) {
 		if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
@@ -746,7 +747,7 @@ static vk::SurfaceFormatKHR hagl::chooseSwapSurfaceFormat(const std::vector<vk::
 	return formats[0];
 }
 
-static vk::UniqueImageView hagl::createImageView(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspectMask, uint32_t mipLevels) {
+static vk::UniqueImageView hagl::create_image_view(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspect_mask, uint32_t mip_levels) {
 	vk::ComponentMapping components(
 		vk::ComponentSwizzle::eIdentity,
 		vk::ComponentSwizzle::eIdentity,
@@ -755,9 +756,9 @@ static vk::UniqueImageView hagl::createImageView(const vk::Device& device, const
 	);
 
 	vk::ImageSubresourceRange subresource(
-		aspectMask,
+		aspect_mask,
 		0, // Base mip level
-		mipLevels,
+		mip_levels,
 		0, // Base array layer
 		1 // Layer count
 	);
@@ -774,7 +775,7 @@ static vk::UniqueImageView hagl::createImageView(const vk::Device& device, const
 	return device.createImageViewUnique(createInfo);
 }
 
-vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDevice, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples) {
+vk::UniqueRenderPass hagl::create_render_pass(const vk::PhysicalDevice& physical_device, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples) {
 	vk::AttachmentDescription colorAttachment(
 		{}, // Flags
 		format, // Format
@@ -863,12 +864,12 @@ vk::UniqueRenderPass hagl::createRenderPass(const vk::PhysicalDevice& physicalDe
 	return device.createRenderPassUnique(createInfo);
 }
 
-static vk::UniqueShaderModule hagl::createShaderModule(const vk::Device& device, const std::vector<char>& bytes) {
+static vk::UniqueShaderModule hagl::create_shader_module(const vk::Device& device, const std::vector<char>& bytes) {
 	vk::ShaderModuleCreateInfo createInfo({}, bytes.size(), reinterpret_cast<const uint32_t*>(bytes.data()), nullptr);
 	return device.createShaderModuleUnique(createInfo);
 }
 
-static vk::Format hagl::findDepthFormat(const vk::PhysicalDevice& physicalDevice) {
+static vk::Format hagl::find_depth_format(const vk::PhysicalDevice& physical_device) {
 	std::vector<vk::Format> formats = {
 		vk::Format::eD32Sfloat,
 		vk::Format::eD32SfloatS8Uint,
@@ -880,7 +881,7 @@ static vk::Format hagl::findDepthFormat(const vk::PhysicalDevice& physicalDevice
 	vk::FormatProperties props;
 
 	for (auto format : formats) {
-		props = physicalDevice.getFormatProperties(format);
+		props = physical_device.getFormatProperties(format);
 
 		bool hasLinear = (tiling == vk::ImageTiling::eLinear
 			&& (props.linearTilingFeatures & features) == features);
@@ -896,27 +897,27 @@ static vk::Format hagl::findDepthFormat(const vk::PhysicalDevice& physicalDevice
 	throw new std::runtime_error("Failed to find supported device format.\n");
 }
 
-static hagl::QueueFamilyIndices hagl::findQueueFamilies(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) {
+static hagl::QueueFamilyIndices hagl::find_queue_families(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) {
 	QueueFamilyIndices deviceIndices{};
 	auto queueFamilyProperties = device.getQueueFamilyProperties();
 
-	for (int i = 0; i < queueFamilyProperties.size() && !isQueueFamilyComplete(deviceIndices); i++) {
+	for (int i = 0; i < queueFamilyProperties.size() && !is_queue_family_complete(deviceIndices); i++) {
 		if (queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) {
-			deviceIndices.graphicsFamily = i;
-			deviceIndices.graphicsAvail = true;
+			deviceIndices.graphics_family = i;
+			deviceIndices.graphics_avail = true;
 		}
 
 		if (device.getSurfaceSupportKHR(i, surface)) {
-			deviceIndices.presentFamily = i;
-			deviceIndices.presentAvail = true;
+			deviceIndices.present_family = i;
+			deviceIndices.present_avail = true;
 		}
 	}
 
 	return deviceIndices;
 }
 
-static vk::SampleCountFlagBits hagl::getMaxUsableSampleCount(const vk::PhysicalDevice& physicalDevice) {
-	auto physicalDeviceProperties = physicalDevice.getProperties();
+static vk::SampleCountFlagBits hagl::get_max_usable_sample_count(const vk::PhysicalDevice& physical_device) {
+	auto physicalDeviceProperties = physical_device.getProperties();
 
 	vk::SampleCountFlags counts = (
 		physicalDeviceProperties.limits.framebufferColorSampleCounts
@@ -933,12 +934,12 @@ static vk::SampleCountFlagBits hagl::getMaxUsableSampleCount(const vk::PhysicalD
 	return vk::SampleCountFlagBits::e1;
 }
 
-static bool hagl::isDeviceSuitable(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface, const std::vector<const char*>& requiredDeviceExtensions) {
-	QueueFamilyIndices deviceIndices = hagl::findQueueFamilies(device, surface);
+static bool hagl::is_device_suitable(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface, const std::vector<const char*>& required_device_extensions) {
+	QueueFamilyIndices deviceIndices = hagl::find_queue_families(device, surface);
 	auto deviceProperties = device.getProperties();
 	auto deviceFeatures = device.getFeatures();
 
-	bool extensionsSupported = hagl::checkDeviceExtensionSupport(device, requiredDeviceExtensions);
+	bool extensionsSupported = hagl::check_device_extension_support(device, required_device_extensions);
 	bool swapchainAdequate = false;
 
 	if (extensionsSupported) {
@@ -948,25 +949,25 @@ static bool hagl::isDeviceSuitable(const vk::PhysicalDevice& device, const vk::S
 			device.getSurfacePresentModesKHR(surface)
 		};
 
-		swapchainAdequate = details.formats.size() > 0 && details.presentModes.size() > 0;
+		swapchainAdequate = details.formats.size() > 0 && details.present_modes.size() > 0;
 	}
 
 	return (
 		(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
 		&& deviceFeatures.geometryShader
 		&& deviceFeatures.samplerAnisotropy
-		&& hagl::isQueueFamilyComplete(deviceIndices)
+		&& hagl::is_queue_family_complete(deviceIndices)
 		&& extensionsSupported
 		&& swapchainAdequate
 	);
 }
 
-static bool hagl::isQueueFamilyComplete(const hagl::QueueFamilyIndices& indices) {
-	return indices.graphicsAvail && indices.presentAvail;
+static bool hagl::is_queue_family_complete(const hagl::QueueFamilyIndices& indices) {
+	return indices.graphics_avail && indices.present_avail;
 }
 
-static std::vector<char> hagl::readShaderBytes(const std::string& filePath) {
-	std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+static std::vector<char> hagl::read_shader_bytes(const std::string& file_path) {
+	std::ifstream file(file_path, std::ios::ate | std::ios::binary);
 
 	if (!file.is_open()) {
 		throw std::runtime_error("Cannot find file to read!\n");

@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
 			cell.get_vertices(vertices);
 		}
 
-		render_system.drawFrame(transform, vertices, {});
+		render_system.draw_frame(transform, vertices, {});
 
 		frame_accumulator += 1;
 		timer += dt;
