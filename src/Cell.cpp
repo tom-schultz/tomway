@@ -16,17 +16,15 @@ hagl::Cell::Cell(float x, float y, bool alive)
 {
 }
 
-void hagl::Cell::get_vertices(std::vector<hagl::Vertex>& vertices) const
+void hagl::Cell::get_vertices(std::vector<hagl::Vertex>& vertices, size_t& vertex_count) const
 {
-	if (_alive) {
-		const std::vector<Vertex> verts(base_verts);
+	if (!_alive) return;
 
-		constexpr auto pos_offset = 2 * CELL_RADIUS + CELL_BORDER;
-		for (auto vertex : verts) {
-			vertex.pos.x += _x * pos_offset;
-			vertex.pos.y += _y * pos_offset;
-			vertices.push_back(vertex);
-		}
+	for (auto const vertex : base_verts) {
+		vertices[vertex_count].pos.x = vertex.pos.x + _x * CELL_POS_OFFSET;
+		vertices[vertex_count].pos.y = vertex.pos.y + _y * CELL_POS_OFFSET;
+		vertices[vertex_count].color = vertex.color;
+		vertex_count += 1;
 	}
 }
 

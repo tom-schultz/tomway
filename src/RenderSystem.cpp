@@ -50,7 +50,6 @@ hagl::RenderSystem::RenderSystem(WindowSystem& window_system, uint32_t vertex_co
 hagl::RenderSystem::~RenderSystem() {
 }
 
-
 void hagl::copy_buffer(
 	const vk::CommandBuffer& command_buffer,
 	const vk::Buffer& src,

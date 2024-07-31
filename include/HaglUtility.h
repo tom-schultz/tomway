@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdexcept>
+#include "SDL_log.h"
 
 #define LOG_INFO(msg, ...) SDL_Log(msg, ##__VA_ARGS__)
 #define LOG_ERROR(msg, ...) SDL_LogError(0, msg, ##__VA_ARGS__)

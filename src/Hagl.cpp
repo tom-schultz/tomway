@@ -3,7 +3,6 @@
 
 #include "Hagl.h"
 
-#include <chrono>
 
 #include "Cell.h"
 #include "HaglUtility.h"
@@ -15,6 +14,8 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+#include "TimeSystem.h"
 
 int main(int argc, char* argv[])
 {
@@ -30,11 +31,9 @@ int main(int argc, char* argv[])
 	
 	const auto vert_count = static_cast<uint32_t>(cells.size()) * hagl::Cell::vertices_per_cell();
 	hagl::RenderSystem render_system(window_system, vert_count);
-	
-	auto start_time = std::chrono::high_resolution_clock::now();
-	std::chrono::steady_clock::time_point time_point = start_time;
-	uint32_t frame_accumulator = 0, last_sec_frames = 0;
-	float timer = 0;
+
+	hagl::TimeSystem time_system {};
+	float delta = 0;
 	
 	uint32_t width, height;
 	glm::vec3 pos(0);
@@ -44,12 +43,12 @@ int main(int argc, char* argv[])
 	bool s = false;
 	bool d = false;
 	bool esc = false;
+	
+	std::vector<hagl::Vertex> vertices;
+	vertices.resize(cells.size() * hagl::Cell::vertices_per_cell());
 
 	while (true) {
-		auto current_time = std::chrono::high_resolution_clock::now();
-		const float dt = std::chrono::duration<float>(current_time - time_point).count();
-		time_point = current_time;
-
+		delta = time_system.new_frame();
 		auto input_events = window_system.handle_events();
 		window_system.get_vulkan_framebuffer_size(width, height);
 
@@ -74,10 +73,10 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		if (w) pos[1] += 1.0f * dt;
-		if (s) pos[1] -= 1.0f * dt;
-		if (a) pos[0] -= 1.0f * dt;
-		if (d) pos[0] += 1.0f * dt;
+		if (w) pos[1] += 1.0f * delta;
+		if (s) pos[1] -= 1.0f * delta;
+		if (a) pos[0] -= 1.0f * delta;
+		if (d) pos[0] += 1.0f * delta;
 
 		if (esc)
 		{
@@ -99,23 +98,15 @@ int main(int argc, char* argv[])
 			0.1f,
 			1000.0f);
 
-		std::vector<hagl::Vertex> vertices;
-		vertices.reserve(cells.size() * hagl::Cell::vertices_per_cell());
-
+		size_t vertex_count = 0;
+		vertices.resize(vertices.capacity());
+		
 		for (auto cell : cells) {
-			cell.get_vertices(vertices);
+			cell.get_vertices(vertices, vertex_count);
 		}
 
+		vertices.resize(vertex_count);
 		render_system.draw_frame(transform, vertices, {});
-
-		frame_accumulator += 1;
-		timer += dt;
-
-		if (timer > 1.0f) {
-			LOG_INFO("FPS: %d", frame_accumulator - last_sec_frames);
-			last_sec_frames = frame_accumulator;
-			timer = 0;
-		}
 	}
 
 	exit(0);
