@@ -51,10 +51,10 @@ int main(int argc, char* argv[])
 		time_point = current_time;
 
 		auto input_events = window_system.handle_events();
-		window_system.getVulkanFramebufferSize(width, height);
+		window_system.get_vulkan_framebuffer_size(width, height);
 
 		for (const auto event : input_events) {
-			switch (event.button) {
+			switch (event.button) {  // NOLINT(clang-diagnostic-switch-enum)
 			case hagl::InputButton::W:
 				w = event.type == hagl::InputEventType::BUTTON_DOWN;
 				break;

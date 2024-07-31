@@ -20,7 +20,7 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCoun
 	try {
 		createVkInstance();
 
-		_uSurface = _windowSystem.createVulkanSurface(*_uInstance);
+		_uSurface = _windowSystem.create_vulkan_surface(*_uInstance);
 		pickPhysicalDevice();
 		createLogicalDevice();
 		createSwapchain();
@@ -42,8 +42,8 @@ hagl::RenderSystem::RenderSystem(WindowSystem& windowSystem, uint32_t vertexCoun
 		throw e;
 	}
 
-	_windowSystem.registerFramebufferResizeCallback(std::bind(&RenderSystem::resizeFramebuffer, this));
-	_windowSystem.registerMinimizedCallback(std::bind(&RenderSystem::minimized, this));
+	_windowSystem.register_framebuffer_resize_callback(std::bind(&RenderSystem::resizeFramebuffer, this));
+	_windowSystem.register_minimized_callback(std::bind(&RenderSystem::minimized, this));
 	LOG_INFO("Render system initialized.");
 }
 
@@ -462,7 +462,7 @@ void hagl::RenderSystem::createVkInstance() {
 		VK_API_VERSION_1_3 // API Version
 	);
 
-	auto requiredInstanceExtensions = _windowSystem.getExtensions();
+	auto requiredInstanceExtensions = _windowSystem.get_extensions();
 
 	vk::InstanceCreateInfo appCreateInfo(
 		{}, // flags
@@ -483,7 +483,7 @@ void hagl::RenderSystem::drawFrame(
 	const std::vector<uint32_t> indices)
 {
 	if (_windowMinimized) {
-		_windowSystem.waitWhileMinimized();
+		_windowSystem.wait_while_minimized();
 		_windowMinimized = false;
 	}
 
@@ -621,7 +621,7 @@ void hagl::RenderSystem::recordCommandBuffer(vk::CommandBuffer& commandBuffer, u
 
 void hagl::RenderSystem::recreateSwapchain() {
 	LOG_INFO("Resizing framebuffer!");
-	_windowSystem.waitWhileMinimized(); // Probably unnecessary, but it's safe
+	_windowSystem.wait_while_minimized(); // Probably unnecessary, but it's safe
 	_framebufferResized = false;
 	_windowMinimized = false;
 
@@ -698,7 +698,7 @@ static vk::Extent2D hagl::chooseSwapExtent(const hagl::WindowSystem& windowSyste
 	}
 	else {
 		uint32_t width, height;
-		windowSystem.getVulkanFramebufferSize(width, height);
+		windowSystem.get_vulkan_framebuffer_size(width, height);
 
 		VkExtent2D actualExtent = {
 			width,
