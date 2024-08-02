@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 
-namespace hagl {
+namespace tomway {
 	struct Vertex
 	{
 		glm::vec2 pos;

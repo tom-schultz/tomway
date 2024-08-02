@@ -8,14 +8,15 @@
 #include "HaglUtility.h"
 #include "RenderSystem.h"
 
-hagl::RenderSystem::RenderSystem(WindowSystem& window_system, uint32_t vertex_count, unsigned max_frames_in_flight)
-	: _curr_frame(0),
-	_max_frames_in_flight(max_frames_in_flight),
-	_queue_indices(),
-	_swapchain_format(),
-	_vertex_count(vertex_count),
-	_vertex_buffer_size(vertex_count * sizeof(Vertex)),
-	_window_system(window_system)
+tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, unsigned max_frames_in_flight)
+	: _cell_geometry(cell_geometry),
+	  _curr_frame(0),
+	  _max_frames_in_flight(max_frames_in_flight),
+	  _queue_indices(),
+	  _swapchain_format(),
+	  _vertex_count(cell_geometry.get_vertex_count()),
+	  _vertex_buffer_size(_vertex_count * sizeof(Vertex)),
+	  _window_system(window_system)
 {
 	try {
 		create_vk_instance();
@@ -47,10 +48,10 @@ hagl::RenderSystem::RenderSystem(WindowSystem& window_system, uint32_t vertex_co
 	LOG_INFO("Render system initialized.");
 }
 
-hagl::RenderSystem::~RenderSystem() {
+tomway::RenderSystem::~RenderSystem() {
 }
 
-void hagl::copy_buffer(
+void tomway::copy_buffer(
 	const vk::CommandBuffer& command_buffer,
 	const vk::Buffer& src,
 	const vk::Buffer& dst,
@@ -60,7 +61,7 @@ void hagl::copy_buffer(
 	command_buffer.copyBuffer(src, dst, copy_region);
 }
 
-void hagl::RenderSystem::create_buffer(
+void tomway::RenderSystem::create_buffer(
 	size_t const size,
 	vk::BufferUsageFlags const usage_flags,
 	vk::SharingMode const sharing_mode,
@@ -85,7 +86,7 @@ void hagl::RenderSystem::create_buffer(
 	_unique_device_u->bindBufferMemory(*buffer_u, *buffer_memory_u, 0);
 }
 
-void hagl::RenderSystem::create_command_buffer() {
+void tomway::RenderSystem::create_command_buffer() {
 	_command_buffers_u = _unique_device_u->allocateCommandBuffersUnique({
 		*_command_pool_u,
 		vk::CommandBufferLevel::ePrimary,
@@ -94,7 +95,7 @@ void hagl::RenderSystem::create_command_buffer() {
 	LOG_INFO("Command buffer created.");
 }
 
-void hagl::RenderSystem::create_command_pool() {
+void tomway::RenderSystem::create_command_pool() {
 	auto queue_fam_indices = find_queue_families(_physical_device, *_surface_u);
 
 	_command_pool_u = _unique_device_u->createCommandPoolUnique({
@@ -105,7 +106,7 @@ void hagl::RenderSystem::create_command_pool() {
 	LOG_INFO("Command pool created.");
 }
 
-void hagl::RenderSystem::create_descriptor_sets() {
+void tomway::RenderSystem::create_descriptor_sets() {
 	// This line screams wrong at first glance - I'm taking a value in a resource handler and copying it
 	// multiple times in a vector! BUT, remember that the handler here doesn't call delete - it calls Vulkan
 	// Destroy commands. We don't actually *care* about the DescriptorSetLayout struct, it's a handle to the
@@ -132,14 +133,14 @@ void hagl::RenderSystem::create_descriptor_sets() {
 	LOG_INFO("Descriptor sets created.");
 }
 
-void hagl::RenderSystem::create_descriptor_pool() {
+void tomway::RenderSystem::create_descriptor_pool() {
 	vk::DescriptorPoolSize pool_size(vk::DescriptorType::eUniformBuffer, _max_frames_in_flight);
 	vk::DescriptorPoolCreateInfo const pool_info({}, _max_frames_in_flight, pool_size); // Flags, max sets, pool sizes
 	_descriptor_pool_u = _unique_device_u->createDescriptorPoolUnique(pool_info);
 	LOG_INFO("Descriptor pool created.");
 }
 
-void hagl::RenderSystem::create_descriptor_set_layout() {
+void tomway::RenderSystem::create_descriptor_set_layout() {
 	vk::DescriptorSetLayoutBinding transform_layout_binding(
 		0, // Binding
 		vk::DescriptorType::eUniformBuffer,
@@ -152,7 +153,7 @@ void hagl::RenderSystem::create_descriptor_set_layout() {
 	LOG_INFO("Descriptor set layout created.");
 }
 
-void hagl::RenderSystem::create_framebuffers() {
+void tomway::RenderSystem::create_framebuffers() {
 	_framebuffers_u.resize(_image_views_u.size());
 
 	// TODO - create color and image framebuffers
@@ -172,7 +173,7 @@ void hagl::RenderSystem::create_framebuffers() {
 	LOG_INFO("Framebuffers created.");
 }
 
-void hagl::RenderSystem::create_graphics_pipeline() {
+void tomway::RenderSystem::create_graphics_pipeline() {
 	// TODO - make this configurable, probably a list of shaders to create or something
 	std::vector<char> frag_shader_bytes = read_shader_bytes("shaders/frag.spv");
 	std::vector<char> vert_shader_bytes = read_shader_bytes("shaders/vert.spv");
@@ -299,7 +300,7 @@ void hagl::RenderSystem::create_graphics_pipeline() {
 	LOG_INFO("Graphics pipeline created.");
 }
 
-void hagl::RenderSystem::create_image_views() {
+void tomway::RenderSystem::create_image_views() {
 	_image_views_u.clear();
 
 	for (auto image : _images) {
@@ -309,7 +310,7 @@ void hagl::RenderSystem::create_image_views() {
 	LOG_INFO("Image views created.");
 }
 
-void hagl::RenderSystem::create_logical_device() {
+void tomway::RenderSystem::create_logical_device() {
 	if (_validation_layers.size() > 0 && !check_validation_layer_support(_validation_layers)) {
 		throw new std::runtime_error("Requested validation layers not available!");
 	}
@@ -346,7 +347,7 @@ void hagl::RenderSystem::create_logical_device() {
 	LOG_INFO("Logical device created.");
 }
 
-void hagl::RenderSystem::create_swapchain() {
+void tomway::RenderSystem::create_swapchain() {
 	SwapchainSupportDetails details = {
 		_physical_device.getSurfaceCapabilitiesKHR(*_surface_u),
 		_physical_device.getSurfaceFormatsKHR(*_surface_u),
@@ -395,7 +396,7 @@ void hagl::RenderSystem::create_swapchain() {
 	LOG_INFO("Swapchain created.");
 }
 
-void hagl::RenderSystem::create_sync_objects() {
+void tomway::RenderSystem::create_sync_objects() {
 	_image_available_sems_u.resize(_max_frames_in_flight);
 	_render_finished_sems_u.resize(_max_frames_in_flight);
 	_in_flight_fences_u.resize(_max_frames_in_flight);
@@ -409,7 +410,7 @@ void hagl::RenderSystem::create_sync_objects() {
 	LOG_INFO("Synchronization objects created.");
 }
 
-void hagl::RenderSystem::create_uniform_buffers() {
+void tomway::RenderSystem::create_uniform_buffers() {
 	vk::DeviceSize bufferSize = sizeof(Transform);
 	_uniform_buffers_u.resize(_max_frames_in_flight);
 	_uniform_buffers_memory_u.resize(_max_frames_in_flight);
@@ -430,7 +431,7 @@ void hagl::RenderSystem::create_uniform_buffers() {
 	LOG_INFO("Uniform buffers created.");
 }
 
-void hagl::RenderSystem::create_vertex_buffers() {
+void tomway::RenderSystem::create_vertex_buffers() {
 	create_buffer(
 		_vertex_buffer_size,
 		vk::BufferUsageFlagBits::eTransferSrc,
@@ -452,7 +453,7 @@ void hagl::RenderSystem::create_vertex_buffers() {
 	LOG_INFO("Vertex buffers created.");
 }
 
-void hagl::RenderSystem::create_vk_instance() {
+void tomway::RenderSystem::create_vk_instance() {
 	vk::ApplicationInfo info(
 		APP_NAME, // Application Name
 		1, // Application version
@@ -476,16 +477,14 @@ void hagl::RenderSystem::create_vk_instance() {
 	LOG_INFO("Vulkan instance created.");
 }
 
-void hagl::RenderSystem::draw_frame(
-	Transform transform,
-	const std::vector<Vertex>& vertices,
-	const std::vector<uint32_t> indices)
+void tomway::RenderSystem::draw_frame(Transform const& transform)
 {
 	if (_window_minimized) {
 		_window_system.wait_while_minimized();
 		_window_minimized = false;
 	}
-
+	
+	auto const vertices = _cell_geometry.get_vertices();
 	transfer_vertices(vertices);
 	_unique_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
 
@@ -538,7 +537,7 @@ void hagl::RenderSystem::draw_frame(
 	_curr_frame = (_curr_frame + 1) % _max_frames_in_flight;
 }
 
-uint32_t hagl::RenderSystem::find_memory_type(uint32_t type_filter, vk::MemoryPropertyFlags properties) {
+uint32_t tomway::RenderSystem::find_memory_type(uint32_t type_filter, vk::MemoryPropertyFlags properties) {
 	auto memProperties = _physical_device.getMemoryProperties();
 
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
@@ -552,11 +551,11 @@ uint32_t hagl::RenderSystem::find_memory_type(uint32_t type_filter, vk::MemoryPr
 	throw std::runtime_error("Failed to find a suitable memory type!");
 }
 
-void hagl::RenderSystem::minimized() {
+void tomway::RenderSystem::minimized() {
 	_window_minimized = true;
 }
 
-void hagl::RenderSystem::pick_physical_device() {
+void tomway::RenderSystem::pick_physical_device() {
 	uint32_t deviceCount = 0;
 	auto devices = _instance_u->enumeratePhysicalDevices();
 
@@ -577,7 +576,7 @@ void hagl::RenderSystem::pick_physical_device() {
 	throw new std::runtime_error("Could not find a suitable GPU!");
 }
 
-void hagl::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buffer, uint32_t image_index) {
+void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buffer, uint32_t image_index) {
 	vk::CommandBufferBeginInfo beginInfo;
 	command_buffer.begin(beginInfo);
 	// I'm not sure this belongs in *this* function, but this is functionally where it should happen
@@ -614,12 +613,12 @@ void hagl::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buffer
 		_descriptor_sets[_curr_frame],
 		nullptr); // Dynamic offsets
 
-	command_buffer.draw(_vertex_count, 1, 0, 0); // Vertex count, instance count, first vertex, first instance
+	command_buffer.draw(static_cast<uint32_t>(_vertex_count), 1, 0, 0); // Vertex count, instance count, first vertex, first instance
 	command_buffer.endRenderPass();
 	command_buffer.end();
 }
 
-void hagl::RenderSystem::recreate_swapchain() {
+void tomway::RenderSystem::recreate_swapchain() {
 	LOG_INFO("Resizing framebuffer!");
 	_window_system.wait_while_minimized(); // Probably unnecessary, but it's safe
 	_framebuffer_resized = false;
@@ -634,24 +633,24 @@ void hagl::RenderSystem::recreate_swapchain() {
 	create_framebuffers();
 }
 
-inline void hagl::RenderSystem::resize_framebuffer() {
+inline void tomway::RenderSystem::resize_framebuffer() {
 	_framebuffer_resized = true;
 }
 
 // TODO - use a different queue family for transfer operations
 // https://docs.vulkan.org/tutorial/latest/00_Introduction.html
-void hagl::RenderSystem::transfer_vertices(const std::vector<Vertex>& vertices) {
-	memcpy(_staging_buffer_mapped, vertices.data(), _vertex_buffer_size);
+void tomway::RenderSystem::transfer_vertices(const std::vector<Vertex>& vertices) {
+	memcpy(_staging_buffer_mapped, vertices.data(), vertices.size() * sizeof(Vertex));
 }
 
-void hagl::RenderSystem::update_uniform_buffer(Transform transform) {
+void tomway::RenderSystem::update_uniform_buffer(Transform transform) {
 	transform.projection[1][1] *= -1;
 	memcpy(_uniform_buffers_mapped[_curr_frame], &transform, sizeof(transform));
 }
 
 #pragma region statics
 
-static bool hagl::check_device_extension_support(const vk::PhysicalDevice& device, std::vector<const char*> required_device_extensions) {
+static bool tomway::check_device_extension_support(const vk::PhysicalDevice& device, std::vector<const char*> required_device_extensions) {
 	auto deviceExtensions = device.enumerateDeviceExtensionProperties();
 	std::vector<std::string> supported;
 
@@ -674,7 +673,7 @@ static bool hagl::check_device_extension_support(const vk::PhysicalDevice& devic
 	return true;
 }
 
-static bool hagl::check_validation_layer_support(const std::vector<const char*>& validation_layers) {
+static bool tomway::check_validation_layer_support(const std::vector<const char*>& validation_layers) {
 	auto supportedLayers = vk::enumerateInstanceLayerProperties();
 
 	for (auto reqLayer : validation_layers) {
@@ -692,7 +691,7 @@ static bool hagl::check_validation_layer_support(const std::vector<const char*>&
 	return true;
 }
 
-static vk::Extent2D hagl::choose_swap_extent(const hagl::WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities) {
+static vk::Extent2D tomway::choose_swap_extent(const tomway::WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities) {
 	if (capabilities.currentExtent.width != UINT32_MAX) {
 		return capabilities.currentExtent;
 	}
@@ -725,7 +724,7 @@ static vk::Extent2D hagl::choose_swap_extent(const hagl::WindowSystem& windowSys
 	}
 }
 
-static vk::PresentModeKHR hagl::choose_swap_present_mode(const std::vector<vk::PresentModeKHR> presentModes) {
+static vk::PresentModeKHR tomway::choose_swap_present_mode(const std::vector<vk::PresentModeKHR> presentModes) {
 	for (auto mode : presentModes) {
 		if (mode == vk::PresentModeKHR::eMailbox) {
 			return mode;
@@ -735,7 +734,7 @@ static vk::PresentModeKHR hagl::choose_swap_present_mode(const std::vector<vk::P
 	return vk::PresentModeKHR::eFifo;
 }
 
-static vk::SurfaceFormatKHR hagl::choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR> formats) {
+static vk::SurfaceFormatKHR tomway::choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR> formats) {
 
 	for (auto format : formats) {
 		if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
@@ -746,7 +745,7 @@ static vk::SurfaceFormatKHR hagl::choose_swap_surface_format(const std::vector<v
 	return formats[0];
 }
 
-static vk::UniqueImageView hagl::create_image_view(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspect_mask, uint32_t mip_levels) {
+static vk::UniqueImageView tomway::create_image_view(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspect_mask, uint32_t mip_levels) {
 	vk::ComponentMapping components(
 		vk::ComponentSwizzle::eIdentity,
 		vk::ComponentSwizzle::eIdentity,
@@ -774,7 +773,7 @@ static vk::UniqueImageView hagl::create_image_view(const vk::Device& device, con
 	return device.createImageViewUnique(createInfo);
 }
 
-vk::UniqueRenderPass hagl::create_render_pass(const vk::PhysicalDevice& physical_device, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples) {
+vk::UniqueRenderPass tomway::create_render_pass(const vk::PhysicalDevice& physical_device, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples) {
 	vk::AttachmentDescription colorAttachment(
 		{}, // Flags
 		format, // Format
@@ -863,12 +862,12 @@ vk::UniqueRenderPass hagl::create_render_pass(const vk::PhysicalDevice& physical
 	return device.createRenderPassUnique(createInfo);
 }
 
-static vk::UniqueShaderModule hagl::create_shader_module(const vk::Device& device, const std::vector<char>& bytes) {
+static vk::UniqueShaderModule tomway::create_shader_module(const vk::Device& device, const std::vector<char>& bytes) {
 	vk::ShaderModuleCreateInfo createInfo({}, bytes.size(), reinterpret_cast<const uint32_t*>(bytes.data()), nullptr);
 	return device.createShaderModuleUnique(createInfo);
 }
 
-static vk::Format hagl::find_depth_format(const vk::PhysicalDevice& physical_device) {
+static vk::Format tomway::find_depth_format(const vk::PhysicalDevice& physical_device) {
 	std::vector<vk::Format> formats = {
 		vk::Format::eD32Sfloat,
 		vk::Format::eD32SfloatS8Uint,
@@ -896,7 +895,7 @@ static vk::Format hagl::find_depth_format(const vk::PhysicalDevice& physical_dev
 	throw new std::runtime_error("Failed to find supported device format.\n");
 }
 
-static hagl::QueueFamilyIndices hagl::find_queue_families(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) {
+static tomway::QueueFamilyIndices tomway::find_queue_families(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) {
 	QueueFamilyIndices deviceIndices{};
 	auto queueFamilyProperties = device.getQueueFamilyProperties();
 
@@ -915,7 +914,7 @@ static hagl::QueueFamilyIndices hagl::find_queue_families(const vk::PhysicalDevi
 	return deviceIndices;
 }
 
-static vk::SampleCountFlagBits hagl::get_max_usable_sample_count(const vk::PhysicalDevice& physical_device) {
+static vk::SampleCountFlagBits tomway::get_max_usable_sample_count(const vk::PhysicalDevice& physical_device) {
 	auto physicalDeviceProperties = physical_device.getProperties();
 
 	vk::SampleCountFlags counts = (
@@ -933,16 +932,16 @@ static vk::SampleCountFlagBits hagl::get_max_usable_sample_count(const vk::Physi
 	return vk::SampleCountFlagBits::e1;
 }
 
-static bool hagl::is_device_suitable(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface, const std::vector<const char*>& required_device_extensions) {
-	QueueFamilyIndices deviceIndices = hagl::find_queue_families(device, surface);
+static bool tomway::is_device_suitable(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface, const std::vector<const char*>& required_device_extensions) {
+	QueueFamilyIndices deviceIndices = tomway::find_queue_families(device, surface);
 	auto deviceProperties = device.getProperties();
 	auto deviceFeatures = device.getFeatures();
 
-	bool extensionsSupported = hagl::check_device_extension_support(device, required_device_extensions);
+	bool extensionsSupported = tomway::check_device_extension_support(device, required_device_extensions);
 	bool swapchainAdequate = false;
 
 	if (extensionsSupported) {
-		hagl::SwapchainSupportDetails details = {
+		tomway::SwapchainSupportDetails details = {
 			device.getSurfaceCapabilitiesKHR(surface),
 			device.getSurfaceFormatsKHR(surface),
 			device.getSurfacePresentModesKHR(surface)
@@ -955,17 +954,17 @@ static bool hagl::is_device_suitable(const vk::PhysicalDevice& device, const vk:
 		(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
 		&& deviceFeatures.geometryShader
 		&& deviceFeatures.samplerAnisotropy
-		&& hagl::is_queue_family_complete(deviceIndices)
+		&& tomway::is_queue_family_complete(deviceIndices)
 		&& extensionsSupported
 		&& swapchainAdequate
 	);
 }
 
-static bool hagl::is_queue_family_complete(const hagl::QueueFamilyIndices& indices) {
+static bool tomway::is_queue_family_complete(const tomway::QueueFamilyIndices& indices) {
 	return indices.graphics_avail && indices.present_avail;
 }
 
-static std::vector<char> hagl::read_shader_bytes(const std::string& file_path) {
+static std::vector<char> tomway::read_shader_bytes(const std::string& file_path) {
 	std::ifstream file(file_path, std::ios::ate | std::ios::binary);
 
 	if (!file.is_open()) {

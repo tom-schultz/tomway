@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-namespace hagl {
+namespace tomway {
 	// https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
 	struct Transform
 	{

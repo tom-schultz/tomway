@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <chrono>
 
-namespace hagl
+namespace tomway
 {
     class TimeSystem
     {

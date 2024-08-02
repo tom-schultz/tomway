@@ -2,7 +2,7 @@
 
 #include "SDL.h"
 
-namespace hagl {
+namespace tomway {
 	enum InputEventType {
 		UNSUPPORTED = 0,
 		BUTTON_DOWN,

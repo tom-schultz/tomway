@@ -9,11 +9,13 @@
 #endif
 
 #include <vulkan/vulkan.hpp>
+
+#include "CellGeometry.h"
 #include "Transform.h"
 #include "Vertex.h"
 #include "WindowSystem.h"
 
-namespace hagl {
+namespace tomway {
 	struct QueueFamilyIndices {
 		uint32_t graphics_family;
 		bool graphics_avail;
@@ -29,14 +31,10 @@ namespace hagl {
 
 	class RenderSystem {
 	public:
-		RenderSystem(WindowSystem& window_system, uint32_t vertex_count, unsigned max_frames_in_flight = 2);
+		RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, unsigned max_frames_in_flight = 2);
 		~RenderSystem();
 
-		void draw_frame(
-			Transform transform,
-			const std::vector<Vertex>& vertices,
-			const std::vector<uint32_t> indices);
-
+		void draw_frame(Transform const& transform);
 		void minimized();
 		void resize_framebuffer();
 	private:
@@ -73,6 +71,7 @@ namespace hagl {
 		########  STRICT ORDERING SECTION END
 		*/
 
+		CellGeometry& _cell_geometry;
 		unsigned _curr_frame;
 		std::vector<vk::DescriptorSet> _descriptor_sets;
 		bool _framebuffer_resized;
@@ -89,7 +88,7 @@ namespace hagl {
 		vk::Format _swapchain_format;
 		std::vector<void*> _uniform_buffers_mapped;
 		std::vector<const char*> _validation_layers = { VALIDATION_LAYERS };
-		uint32_t _vertex_count;
+		size_t _vertex_count;
 		size_t _vertex_buffer_size;
 		bool _window_minimized;
 		WindowSystem& _window_system;

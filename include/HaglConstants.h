@@ -1,5 +1,5 @@
 #pragma once
 
-namespace hagl {
+namespace tomway {
 	extern const char* APP_NAME;
 }

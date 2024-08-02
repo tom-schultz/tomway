@@ -1,12 +1,12 @@
 #include "TimeSystem.h"
 #include "HaglUtility.h"
 
-hagl::TimeSystem::TimeSystem()
+tomway::TimeSystem::TimeSystem()
 {
     _last_frame_start_time = std::chrono::high_resolution_clock::now();
 }
 
-float hagl::TimeSystem::new_frame()
+float tomway::TimeSystem::new_frame()
 {
     auto const new_frame_time = std::chrono::high_resolution_clock::now();
     const float delta = std::chrono::duration<float>(new_frame_time - _last_frame_start_time).count();

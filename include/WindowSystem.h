@@ -7,7 +7,7 @@
 #include "InputEvent.h"
 #include "SDL_vulkan.h"
 
-namespace hagl {
+namespace tomway {
 	class WindowSystem
 	{
 	public:

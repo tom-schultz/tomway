@@ -1,6 +1,6 @@
 #include "Vertex.h"
 
-std::array<vk::VertexInputAttributeDescription, 2> hagl::Vertex::get_attribute_descriptions() {
+std::array<vk::VertexInputAttributeDescription, 2> tomway::Vertex::get_attribute_descriptions() {
 	std::array<vk::VertexInputAttributeDescription, 2> ret{};
 
 	ret[0] = { 0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos) }; // Location, binding, format, offset
@@ -9,7 +9,7 @@ std::array<vk::VertexInputAttributeDescription, 2> hagl::Vertex::get_attribute_d
 	return ret;
 }
 
-vk::VertexInputBindingDescription hagl::Vertex::get_binding_description() {
+vk::VertexInputBindingDescription tomway::Vertex::get_binding_description() {
 	vk::VertexInputBindingDescription constexpr desc(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
 	return desc;
 }
