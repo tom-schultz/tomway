@@ -7,11 +7,14 @@ namespace tomway
     class SimulationSystem
     {
     public:
-        SimulationSystem(int grid_radius);
+        SimulationSystem(size_t grid_size);
         size_t get_cell_count() const;
-        CellContainer const& get_cells() const;
-        void step_simulation();
+        CellContainer const* current_cells() const;
+        CellContainer const* step_simulation();
     private:
-        CellContainer _cells;
+        inline size_t wrap(long long int val) const;
+        size_t _grid_size;
+        unsigned int _index = 0;
+        CellContainer _cells[2];
     };
 }

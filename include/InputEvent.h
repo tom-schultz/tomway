@@ -18,6 +18,8 @@ namespace tomway {
 		ESCAPE,
 		MOUSE_LEFT,
 		MOUSE_RIGHT,
+		SPACE,
+		L,
 	};
 
 	struct InputEvent

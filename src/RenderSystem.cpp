@@ -485,6 +485,7 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 	}
 	
 	auto const vertices = _cell_geometry.get_vertices();
+	_vertex_count = vertices.size();
 	transfer_vertices(vertices);
 	_unique_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
 

@@ -1,32 +1,60 @@
 #include "SimulationSystem.h"
 
-tomway::SimulationSystem::SimulationSystem(int const grid_radius)
-    : _cells(grid_radius)
+#include "HaglUtility.h"
+
+tomway::SimulationSystem::SimulationSystem(size_t const grid_size)
+    : _grid_size(grid_size),
+    _cells{ {grid_size}, {grid_size}}
 {
 }
 
 size_t tomway::SimulationSystem::get_cell_count() const
 {
-    return _cells.size();
+    return _cells[_index].size();
 }
 
-tomway::CellContainer const& tomway::SimulationSystem::get_cells() const
+tomway::CellContainer const* tomway::SimulationSystem::current_cells() const
 {
-    return _cells;
+    return &_cells[_index];
 }
 
-void tomway::SimulationSystem::step_simulation()
+tomway::CellContainer const* tomway::SimulationSystem::step_simulation()
 {
-    for (auto cell : _cells)
-    {
-        int neighbors_alive = 0;
+    unsigned int const new_index = (_index + 1) % 2;
+    
+    for (Cell& cell : _cells[_index])
+    {            
+        size_t const x = cell.get_x();
+        size_t const y = cell.get_y();
+        
+        size_t const xp1 = wrap(x + 1);
+        size_t const xm1 = wrap(x - 1);
+        size_t const yp1 = wrap(y + 1);
+        size_t const ym1 = wrap(y - 1);
 
-        for (int x = -1; x <= 1 && neighbors_alive < 4; x++)
-        {
-            for (int y = -1; y <= 1 && neighbors_alive < 4; y++)
-            {
-                if (x == 0 && y == 0) continue;
-            }
-        }
+        int const neighbors_alive = _cells[_index].get_alive(xm1, y) // Left
+             + _cells[_index].get_alive(xm1, ym1) // Upper Left
+             + _cells[_index].get_alive(x, ym1) // Up
+             + _cells[_index].get_alive(xp1, ym1) // Upper Right
+             + _cells[_index].get_alive(xp1, y) // Right
+             + _cells[_index].get_alive(xp1, yp1) // Lower Right
+             + _cells[_index].get_alive(x, yp1) // Down
+             + _cells[_index].get_alive(xm1, yp1); // Lower Left
+
+        bool const alive = (cell.get_alive() && neighbors_alive == 2) || neighbors_alive == 3;
+        _cells[new_index].set_alive(x, y, alive);
     }
+
+    _index = new_index;
+    return &_cells[_index];
+}
+
+inline size_t tomway::SimulationSystem::wrap(long long int val) const
+{
+    if (val < 0)
+    {
+        return _grid_size - 1;
+    }
+    
+    return static_cast<size_t>(val) > _grid_size - 1 ? 0 : val;
 }

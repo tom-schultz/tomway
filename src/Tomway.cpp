@@ -10,31 +10,33 @@
 #include "WindowSystem.h"
 
 #define GLM_FORCE_RADIANS
+#include <thread>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-size_t constexpr GRID_SIZE = 10;
+size_t constexpr GRID_SIZE = 100;
 
 int main(int argc, char* argv[])
 {
-	tomway::SimulationSystem simulation_system(GRID_SIZE);
-	tomway::CellGeometry cell_geometry_generator(simulation_system.get_cells());
+	tomway::SimulationSystem simulation_system(GRID_SIZE);	
+	tomway::CellGeometry cell_geometry_generator(simulation_system.current_cells());
 	tomway::WindowSystem window_system(1024, 768);
-	
 	tomway::RenderSystem render_system(window_system, cell_geometry_generator);
 
-	tomway::TimeSystem time_system {};
+	tomway::TimeSystem time_system(10);
 	float delta = 0;
 	
 	uint32_t width, height;
 	glm::vec3 model_pos(0.0f, 0.0f, 0.0f);
-	glm::vec3 camera_pos(0.0f, 0.0f, 25.0f);
+	glm::vec3 camera_pos(0.0f, 0.0f, GRID_SIZE);
 	
 	bool w = false;
 	bool a = false;
 	bool s = false;
 	bool d = false;
 	bool esc = false;
+	bool step = false;
+	bool locked = true;
 
 	while (true) {
 		delta = time_system.new_frame();
@@ -58,14 +60,27 @@ int main(int argc, char* argv[])
 			case tomway::InputButton::ESCAPE:
 				esc = true;
 				break;
+			case tomway::InputButton::SPACE:
+				if (event.type == tomway::InputEventType::BUTTON_DOWN)
+				{
+					step = true;
+				}
+				break;
+			case tomway::InputButton::L:
+				if (event.type == tomway::InputEventType::BUTTON_DOWN)
+				{
+					locked = !locked;
+				}
+				
+				break;
 			default:;
 			}
 		}
 
-		if (w) camera_pos[1] += 2.0f * delta;
-		if (s) camera_pos[1] -= 2.0f * delta;
-		if (a) camera_pos[0] -= 2.0f * delta;
-		if (d) camera_pos[0] += 2.0f * delta;
+		if (w) camera_pos[1] += 4.0f * delta;
+		if (s) camera_pos[1] -= 4.0f * delta;
+		if (a) camera_pos[0] -= 4.0f * delta;
+		if (d) camera_pos[0] += 4.0f * delta;
 
 		if (esc)
 		{
@@ -86,6 +101,13 @@ int main(int argc, char* argv[])
 			static_cast<float>(width) / static_cast<float>(height),
 			0.1f,
 			1000.0f);
+		
+		if ((!locked && time_system.get_new_tick()) || step)
+		{
+			auto cells = simulation_system.step_simulation();
+			cell_geometry_generator.bind_cells(cells);
+			step = false;
+		}
 		
 		render_system.draw_frame(transform);
 	}
