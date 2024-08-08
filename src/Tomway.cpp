@@ -10,11 +10,10 @@
 #include "WindowSystem.h"
 
 #define GLM_FORCE_RADIANS
-#include <thread>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-size_t constexpr GRID_SIZE = 100;
+size_t constexpr GRID_SIZE = 10;
 
 int main(int argc, char* argv[])
 {
@@ -23,12 +22,12 @@ int main(int argc, char* argv[])
 	tomway::WindowSystem window_system(1024, 768);
 	tomway::RenderSystem render_system(window_system, cell_geometry_generator);
 
-	tomway::TimeSystem time_system(10);
+	tomway::TimeSystem time_system(5);
 	float delta = 0;
 	
 	uint32_t width, height;
 	glm::vec3 model_pos(0.0f, 0.0f, 0.0f);
-	glm::vec3 camera_pos(0.0f, 0.0f, GRID_SIZE);
+	glm::vec3 camera_pos(0, -3.0f, GRID_SIZE);
 	
 	bool w = false;
 	bool a = false;
@@ -89,11 +88,15 @@ int main(int argc, char* argv[])
 
 		tomway::Transform transform;
 		transform.model = glm::translate(transform.model, model_pos);
-		//transform.model = glm::rotate(transform.model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		
+		// transform.model = glm::rotate(
+		// 	transform.model,
+		// 	time_system.get_millis() * glm::radians(15.0f),
+		// 	glm::vec3(0.0f, 0.0f, 1.0f));
 
 		transform.view = glm::lookAt(
 			camera_pos,
-			glm::vec3(camera_pos[0], camera_pos[1] + 0.01f, 0.0f),
+			glm::vec3(camera_pos[0], camera_pos[1] + 3.01f, 0.0f),
 			glm::vec3(0.0f, 0.0f, 1.0f));
 
 		transform.projection = glm::perspective(

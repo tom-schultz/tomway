@@ -6,7 +6,7 @@
 namespace tomway {
 	struct Vertex
 	{
-		glm::vec2 pos;
+		glm::vec3 pos;
 		glm::vec3 color;
 
 		static std::array<vk::VertexInputAttributeDescription, 2> get_attribute_descriptions();

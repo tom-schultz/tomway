@@ -1,18 +1,59 @@
 #include "CellGeometry.h"
 
-std::vector<tomway::Vertex> const tomway::CellGeometry::_base_verts = {
-    {{0, 0}, {1.0f, 0.0f, 0.0f}},
-    {{CELL_WIDTH, 0}, {1.0f, 0.0f, 0.0f}},
-    {{0, CELL_WIDTH}, {1.0f, 0.0f, 0.0f}},
-    {{CELL_WIDTH, 0}, {1.0f, 0.0f, 0.0f}},
-    {{CELL_WIDTH, CELL_WIDTH}, {1.0f, 0.0f, 0.0f}},
-    {{0, CELL_WIDTH}, {1.0f, 0.0f, 0.0f}},
+std::vector<tomway::Vertex> const tomway::CellGeometry::BASE_VERTS = {
+    // X, Y, CELL_WIDTH (Top)
+    {{0.0f, 0.0f, CELL_HEIGHT}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, CELL_HEIGHT}, COLOR_RED},
+    {{0.0f, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, CELL_HEIGHT}, COLOR_RED},
+    {{CELL_WIDTH, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    {{0.0f, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    
+    // X, Y, 0 (Bottom)
+    {{0.0f, 0.0f, 0.0f}, COLOR_RED},
+    {{0.0f, CELL_WIDTH, 0.0f}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, 0.0f}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, 0.0f}, COLOR_RED},
+    {{0.0f, CELL_WIDTH, 0.0f}, COLOR_RED},
+    {{CELL_WIDTH, CELL_WIDTH, 0.0f}, COLOR_RED},
+    
+    // X, 0, Z (Back)
+    {{0.0f, 0.0f, 0.0f}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, 0.0f}, COLOR_RED},
+    {{0.0f, 0.0f, CELL_HEIGHT}, COLOR_RED},
+    {{0.0f, 0.0f, CELL_HEIGHT}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, 0.0f}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, CELL_HEIGHT}, COLOR_RED},
+    
+    // X, CELL_WIDTH, Z (Front)
+    {{CELL_WIDTH, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    {{CELL_WIDTH, CELL_WIDTH, 0.0f}, COLOR_RED},
+    {{0.0f, CELL_WIDTH, 0.0f}, COLOR_RED},
+    {{CELL_WIDTH, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    {{0.0f, CELL_WIDTH, 0.0f}, COLOR_RED},
+    {{0.0f, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    
+    // 0, Y, Z (LEFT)
+    {{0.0f, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    {{0.0f, CELL_WIDTH, 0.0f}, COLOR_RED},
+    {{0.0f, 0.0f, 0.0f}, COLOR_RED},
+    {{0.0f, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    {{0.0f, 0.0f, 0.0f}, COLOR_RED},
+    {{0.0f, 0.0f, CELL_HEIGHT}, COLOR_RED},
+    
+    // CELL_WIDTH, Y, Z (RIGHT)
+    {{CELL_WIDTH, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, 0.0f}, COLOR_RED},
+    {{CELL_WIDTH, CELL_WIDTH, 0.0f}, COLOR_RED},
+    {{CELL_WIDTH, CELL_WIDTH, CELL_HEIGHT}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, CELL_HEIGHT}, COLOR_RED},
+    {{CELL_WIDTH, 0.0f, 0.0f}, COLOR_RED},
 };
 
 tomway::CellGeometry::CellGeometry(CellContainer const* cells)
     : _cells(cells)
 {
-	_vertices.reserve(cells->size() * _base_verts.size() + BACKGROUND_VERT_COUNT);
+	_vertices.reserve(cells->size() * BASE_VERTS.size() + BACKGROUND_VERT_COUNT);
 }
 
 void tomway::CellGeometry::bind_cells(CellContainer const* cells)
@@ -53,12 +94,14 @@ std::vector<tomway::Vertex> const& tomway::CellGeometry::get_vertices()
     {
         if (not cell._alive) continue;
         
-        for (auto const vertex : _base_verts)
+        auto const adjusted_cell_pos_x = (static_cast<float>(cell._x) - _cells->grid_size() / 2.0f) * CELL_POS_OFFSET;
+        auto const adjusted_cell_pos_y = (static_cast<float>(cell._y) - _cells->grid_size() / 2.0f) * CELL_POS_OFFSET;
+        
+        for (auto const vertex : BASE_VERTS)
         {
-            auto const adjusted_cell_pos_x = (static_cast<float>(cell._x) - _cells->grid_size() / 2.0f) * CELL_POS_OFFSET;
-            auto const adjusted_cell_pos_y = (static_cast<float>(cell._y) - _cells->grid_size() / 2.0f) * CELL_POS_OFFSET;
             _vertices[verts_acquired].pos.x = vertex.pos.x + adjusted_cell_pos_x;
             _vertices[verts_acquired].pos.y = vertex.pos.y + adjusted_cell_pos_y;
+            _vertices[verts_acquired].pos.z = vertex.pos.z;
             _vertices[verts_acquired].color = vertex.color;
             verts_acquired += 1;
         }
