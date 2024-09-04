@@ -19,6 +19,10 @@ namespace tomway
         static float constexpr CELL_WIDTH = 0.5f;
         static float constexpr CELL_POS_OFFSET = CELL_WIDTH + CELL_BORDER;
         static glm::vec3 constexpr COLOR_RED = {1.0f, 0.0f, 0.0f}; 
+        static glm::vec3 constexpr COLOR_LG = {0, 0.085f, 0}; 
+        static glm::vec3 constexpr COLOR_DG = {0, 0.025f, 0}; 
+        static glm::vec3 constexpr COLOR_LB = {0, 0, 0.085f}; 
+        static glm::vec3 constexpr COLOR_DB = {0, 0, 0.025f}; 
         CellContainer const* _cells;
 		std::vector<Vertex> _vertices;
     };

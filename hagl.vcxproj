@@ -98,7 +98,6 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(IncludePath)</IncludePath>
-    <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
     <IntDir>$(OutDir)\Intermediate\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Perf|x64'">
@@ -169,7 +168,9 @@
       <Profile>false</Profile>
     </Link>
     <CustomBuildStep>
-      <Command>./compile.bat $(ProjectDir) $(OutDir)</Command>
+      <Outputs></Outputs>
+      <Message></Message>
+      <Inputs></Inputs>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Compile Shaders</Message>
@@ -183,6 +184,14 @@
     <CustomBuildStep>
       <TreatOutputAsContent>true</TreatOutputAsContent>
     </CustomBuildStep>
+    <CustomBuild>
+      <Command>./compile.bat $(ProjectDir) $(OutDir)</Command>
+      <Message>Compile Shaders</Message>
+      <Outputs>$(OutDir)shaders\vert.spv;$(OutDir)shaders\frag.spv;%(Outputs)</Outputs>
+      <AdditionalInputs>$(ProjectDir)shaders\shader.frag;$(ProjectDir)shaders\shader.vert;%(Inputs)</AdditionalInputs>
+      <LinkObjects>false</LinkObjects>
+      <TreatOutputAsContent>true</TreatOutputAsContent>
+    </CustomBuild>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Perf|x64'">
     <ClCompile>
@@ -598,8 +607,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="compile.bat" />
-    <None Include="shaders\shader.frag" />
-    <None Include="shaders\shader.vert" />
+    <CustomBuild Include="shaders\shader.frag" />
+    <CustomBuild Include="shaders\shader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

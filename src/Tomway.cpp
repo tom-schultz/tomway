@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
 	
 	uint32_t width, height;
 	glm::vec3 model_pos(0.0f, 0.0f, 0.0f);
-	glm::vec3 camera_pos(0, -3.0f, GRID_SIZE);
+	glm::vec3 camera_pos(0, 0, GRID_SIZE);
 	
 	bool w = false;
 	bool a = false;
@@ -37,49 +37,78 @@ int main(int argc, char* argv[])
 	bool step = false;
 	bool locked = true;
 
+	glm::vec3 fwd = {0, 0, 0};
+	float vert_rot = -90.0f;
+	float hor_rot = 0.01f;
+	
 	while (true) {
 		delta = time_system.new_frame();
 		auto input_events = window_system.handle_events();
 		window_system.get_vulkan_framebuffer_size(width, height);
+		float mouse_x = 0, mouse_y = 0;
 
 		for (const auto event : input_events) {
-			switch (event.button) {  // NOLINT(clang-diagnostic-switch-enum)
-			case tomway::InputButton::W:
-				w = event.type == tomway::InputEventType::BUTTON_DOWN;
-				break;
-			case tomway::InputButton::A:
-				a = event.type == tomway::InputEventType::BUTTON_DOWN;
-				break;
-			case tomway::InputButton::S:
-				s = event.type == tomway::InputEventType::BUTTON_DOWN;
-				break;
-			case tomway::InputButton::D:
-				d = event.type == tomway::InputEventType::BUTTON_DOWN;
-				break;
-			case tomway::InputButton::ESCAPE:
-				esc = true;
-				break;
-			case tomway::InputButton::SPACE:
-				if (event.type == tomway::InputEventType::BUTTON_DOWN)
-				{
-					step = true;
-				}
-				break;
-			case tomway::InputButton::L:
-				if (event.type == tomway::InputEventType::BUTTON_DOWN)
-				{
-					locked = !locked;
-				}
+			if (event.type == tomway::InputEventType::MOUSE_MOTION)
+			{
+				mouse_x = event.mouse_x;
+				mouse_y = event.mouse_y;
+			}
+			else if (event.type == tomway::InputEventType::BUTTON_DOWN || event.type == tomway::InputEventType::BUTTON_UP)
+			{
+				switch (event.button) {  // NOLINT(clang-diagnostic-switch-enum)
+				case tomway::InputButton::W:
+					w = event.type == tomway::InputEventType::BUTTON_DOWN;
+					break;
+				case tomway::InputButton::A:
+					a = event.type == tomway::InputEventType::BUTTON_DOWN;
+					break;
+				case tomway::InputButton::S:
+					s = event.type == tomway::InputEventType::BUTTON_DOWN;
+					break;
+				case tomway::InputButton::D:
+					d = event.type == tomway::InputEventType::BUTTON_DOWN;
+					break;
+				case tomway::InputButton::ESCAPE:
+					esc = true;
+					break;
+				case tomway::InputButton::SPACE:
+					if (event.type == tomway::InputEventType::BUTTON_DOWN)
+					{
+						step = true;
+					}
+					break;
+				case tomway::InputButton::L:
+					if (event.type == tomway::InputEventType::BUTTON_DOWN)
+					{
+						locked = !locked;
+					}
 				
-				break;
-			default:;
+					break;
+				default:;
+				}
 			}
 		}
 
-		if (w) camera_pos[1] += 4.0f * delta;
-		if (s) camera_pos[1] -= 4.0f * delta;
-		if (a) camera_pos[0] -= 4.0f * delta;
-		if (d) camera_pos[0] += 4.0f * delta;
+		// Inverted
+		vert_rot += mouse_y * delta * 180.0f;
+		hor_rot += mouse_x * delta * 180.0f;
+		
+		glm::vec3 right = glm::vec3(
+			cos(glm::radians(hor_rot)),
+			sin(glm::radians(hor_rot)),
+			0
+		);
+		
+		fwd[0] = cos(glm::radians(vert_rot)) * sin(glm::radians(hor_rot));
+		fwd[1] = cos(glm::radians(vert_rot)) * cos(glm::radians(hor_rot));
+		fwd[2] = sin(glm::radians(vert_rot));
+		
+		float constexpr speed = 4.0f;
+		
+		if (w) camera_pos += fwd * speed * delta;
+		if (s) camera_pos -= fwd * speed * delta;
+		if (a) camera_pos -= right * speed * delta;
+		if (d) camera_pos += right * speed * delta;
 
 		if (esc)
 		{
@@ -88,22 +117,21 @@ int main(int argc, char* argv[])
 
 		tomway::Transform transform;
 		transform.model = glm::translate(transform.model, model_pos);
-		
-		// transform.model = glm::rotate(
-		// 	transform.model,
-		// 	time_system.get_millis() * glm::radians(15.0f),
-		// 	glm::vec3(0.0f, 0.0f, 1.0f));
+
+		glm::vec3 up = glm::cross(right, fwd);
 
 		transform.view = glm::lookAt(
 			camera_pos,
-			glm::vec3(camera_pos[0], camera_pos[1] + 3.01f, 0.0f),
-			glm::vec3(0.0f, 0.0f, 1.0f));
+			camera_pos + fwd,
+			up);
 
 		transform.projection = glm::perspective(
 			glm::radians(45.0f),
 			static_cast<float>(width) / static_cast<float>(height),
 			0.1f,
 			1000.0f);
+
+		transform.projection[1][1] *= -1;
 		
 		if ((!locked && time_system.get_new_tick()) || step)
 		{

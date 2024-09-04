@@ -220,7 +220,7 @@ void tomway::RenderSystem::create_graphics_pipeline() {
 		vk::False, // Rasterizer discard enable
 		vk::PolygonMode::eFill, // Polygon mode
 		vk::CullModeFlagBits::eBack, // Cull mode
-		vk::FrontFace::eCounterClockwise, // Front face
+		vk::FrontFace::eClockwise, // Front face
 		vk::False, // Depth bias enable
 		0.0f, // Depth bias constant factor
 		0.0f, // Depth bias clamp

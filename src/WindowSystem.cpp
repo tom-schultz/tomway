@@ -1,4 +1,6 @@
 #include "WindowSystem.h"
+
+#include <AsyncInfo.h>
 #include <iostream>
 #include "HaglConstants.h"
 #include "HaglUtility.h"
@@ -18,6 +20,7 @@ tomway::WindowSystem::WindowSystem(unsigned const width, unsigned const height)
 		, 1024, 768
 		, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
+	SDL_SetRelativeMouseMode(SDL_TRUE);
 	_window_id = SDL_GetWindowID(_window);
 	LOG_INFO("Window system initialized.");
 }
@@ -106,11 +109,21 @@ std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 			}
 			break;
 		}
+		case SDL_MOUSEMOTION:
+			{
+				InputButton const button = to_input_button(e.button);
+				InputEventType const type = to_input_event_type(static_cast<SDL_EventType>(e.type));
+				float const mouse_x = e.motion.xrel;
+				float const mouse_y = e.motion.yrel;
+				
+				input_events.push_back({type, button, mouse_x, mouse_y});
+			}
 		default:
 			break;
 		}
 	}
 
+	SDL_WarpMouseInWindow(_window, _window_width / 2, _window_height / 2);
 	return input_events;
 }
 

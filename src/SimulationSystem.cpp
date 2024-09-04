@@ -23,7 +23,7 @@ tomway::CellContainer const* tomway::SimulationSystem::step_simulation()
     unsigned int const new_index = (_index + 1) % 2;
     
     for (Cell& cell : _cells[_index])
-    {            
+    {
         size_t const x = cell.get_x();
         size_t const y = cell.get_y();
         

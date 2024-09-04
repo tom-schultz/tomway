@@ -11,6 +11,8 @@ tomway::InputEventType tomway::to_input_event_type(SDL_EventType const& sdl_even
 		return InputEventType::BUTTON_UP;
 	case SDL_MOUSEBUTTONDOWN:
 		return InputEventType::BUTTON_DOWN;
+	case SDL_MOUSEMOTION:
+		return InputEventType::MOUSE_MOTION;
 	default:
 		return InputEventType::UNSUPPORTED;
 	}

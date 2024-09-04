@@ -6,7 +6,8 @@ namespace tomway {
 	enum InputEventType {
 		UNSUPPORTED = 0,
 		BUTTON_DOWN,
-		BUTTON_UP
+		BUTTON_UP,
+		MOUSE_MOTION
 	};
 
 	enum InputButton {
@@ -26,8 +27,8 @@ namespace tomway {
 	{
 		InputEventType type;
 		InputButton button;
-		int mouseX;
-		int mouseY;
+		float mouse_x;
+		float mouse_y;
 	};
 
 	InputEventType to_input_event_type(SDL_EventType const& sdl_event_type);
