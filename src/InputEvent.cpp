@@ -34,6 +34,8 @@ tomway::InputButton tomway::to_input_button(SDL_Keycode const& sdl_keycode) {
 		return InputButton::ESCAPE;
 	case SDLK_SPACE:
 		return InputButton::SPACE;
+	case SDLK_F1:
+		return InputButton::F1;
 	default:
 		return InputButton::NONE;
 	}

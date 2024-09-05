@@ -14,7 +14,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-size_t constexpr GRID_SIZE = 10;
+#include "imgui.h"
+
+size_t constexpr GRID_SIZE = 100;
 
 int main(int argc, char* argv[])
 {
@@ -45,6 +47,7 @@ int main(int argc, char* argv[])
 	while (true) {
 		delta = time_system.new_frame();
 		auto input_events = window_system.handle_events();
+		render_system.new_frame();
 		window_system.get_vulkan_framebuffer_size(width, height);
 		float mouse_x = 0, mouse_y = 0;
 
@@ -85,6 +88,11 @@ int main(int argc, char* argv[])
 					}
 				
 					break;
+				case tomway::InputButton::F1:
+					if (event.type == tomway::InputEventType::BUTTON_DOWN)
+					{
+						window_system.toggle_mouse();
+					}
 				default:;
 				}
 			}
@@ -102,16 +110,19 @@ int main(int argc, char* argv[])
 		
 		glm::vec3 up = glm::cross(right, fwd);
 
-		// Inverted
-		vert_rot += mouse_y * delta * 180.0f;
-		hor_rot += mouse_x * delta * 180.0f;
+		if (not window_system.get_mouse_visible())
+		{
+			// Inverted
+			vert_rot += mouse_y * delta * 180.0f;
+			hor_rot += mouse_x * delta * 180.0f;
 		
-		float constexpr speed = 4.0f;
+			float constexpr speed = 4.0f;
 		
-		if (w) camera_pos += fwd * speed * delta;
-		if (s) camera_pos -= fwd * speed * delta;
-		if (a) camera_pos -= right * speed * delta;
-		if (d) camera_pos += right * speed * delta;
+			if (w) camera_pos += fwd * speed * delta;
+			if (s) camera_pos -= fwd * speed * delta;
+			if (a) camera_pos -= right * speed * delta;
+			if (d) camera_pos += right * speed * delta;
+		}
 
 		if (esc)
 		{

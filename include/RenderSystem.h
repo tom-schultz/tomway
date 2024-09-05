@@ -36,6 +36,7 @@ namespace tomway {
 
 		void draw_frame(Transform const& transform);
 		void minimized();
+		void new_frame();
 		void resize_framebuffer();
 	private:
 		/*
@@ -68,7 +69,8 @@ namespace tomway {
 		vk::UniqueDeviceMemory _vertex_buffer_memory_u;
 		std::vector<vk::UniqueBuffer> _uniform_buffers_u;
 		std::vector<vk::UniqueDeviceMemory> _uniform_buffers_memory_u;
-		vk::UniqueDescriptorPool _descriptor_pool_u;
+		vk::UniqueDescriptorPool _descriptor_pool_main_u;
+		vk::UniqueDescriptorPool _descriptor_pool_imgui_u;
 
 		/*
 		########  STRICT ORDERING SECTION END
@@ -107,7 +109,7 @@ namespace tomway {
 		void create_command_buffer();
 		void create_command_pool();
 		void create_depth_resources();
-		void create_descriptor_pool();
+		void create_descriptor_pools();
 		void create_descriptor_sets();
 		void create_descriptor_set_layout();
 		void create_framebuffers();

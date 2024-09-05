@@ -8,6 +8,17 @@
 #include "HaglUtility.h"
 #include "RenderSystem.h"
 
+#include "imgui_impl_vulkan.h"
+
+static void check_vk_result(VkResult err)
+{
+	if (err == 0)
+		return;
+	fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
+	if (err < 0)
+		abort();
+}
+
 tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, unsigned max_frames_in_flight)
 	: _cell_geometry(cell_geometry),
 	  _curr_frame(0),
@@ -36,7 +47,7 @@ tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& ce
 		create_sync_objects();
 		create_vertex_buffers();
 		create_uniform_buffers();
-		create_descriptor_pool();
+		create_descriptor_pools();
 		create_descriptor_sets();
 	}
 	catch (std::exception const& e) {
@@ -47,9 +58,38 @@ tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& ce
 	_window_system.register_framebuffer_resize_callback([this] { resize_framebuffer(); });
 	_window_system.register_minimized_callback([this] { minimized(); });
 	LOG_INFO("Render system initialized.");
+
+	ImGui_ImplVulkan_InitInfo imgui_init_info {
+		*_instance_u,
+		_physical_device,
+		*_device_u,
+		_queue_indices.graphics_family,
+		_graphics_queue,
+		*_descriptor_pool_imgui_u,
+		*_render_pass_u,
+		static_cast<uint32_t>(_images.size()),
+		static_cast<uint32_t>(_images.size()),
+		static_cast<VkSampleCountFlagBits>(_msaa_samples),
+		{}, // Pipeline cache
+		0, // Subpass
+		false, // Use dynamic rendering
+		{}, // Pipeline rendering create info
+		nullptr, // Allocator
+		check_vk_result, // Function pointer for checking vk results
+		1024ll * 1024ll // Minimum allocation size
+	};
+
+	if (not ImGui_ImplVulkan_Init(&imgui_init_info))
+	{
+		LOG_ERROR("Could not initialize ImGui for Vulkan!");
+		exit(-1);
+	}
+
+	LOG_INFO("Initialized ImGui for Vulkan!");
 }
 
 tomway::RenderSystem::~RenderSystem() {
+	ImGui_ImplVulkan_Shutdown();
 }
 
 void tomway::copy_buffer(
@@ -130,7 +170,7 @@ void tomway::RenderSystem::create_descriptor_sets() {
 	// Destroy commands. We don't actually *care* about the DescriptorSetLayout struct, it's a handle to the
 	// actual resource inside of Vulkan. We can copy the handle as many times as we like.
 	std::vector<vk::DescriptorSetLayout> layouts(_max_frames_in_flight, *_descriptor_set_layout_u);
-	vk::DescriptorSetAllocateInfo const allocate_info(*_descriptor_pool_u, layouts);
+	vk::DescriptorSetAllocateInfo const allocate_info(*_descriptor_pool_main_u, layouts);
 	_descriptor_sets = _device_u->allocateDescriptorSets(allocate_info);
 
 	for (uint32_t i = 0; i < _max_frames_in_flight; i++) {
@@ -151,11 +191,31 @@ void tomway::RenderSystem::create_descriptor_sets() {
 	LOG_INFO("Descriptor sets created.");
 }
 
-void tomway::RenderSystem::create_descriptor_pool() {
-	vk::DescriptorPoolSize pool_size(vk::DescriptorType::eUniformBuffer, _max_frames_in_flight);
-	vk::DescriptorPoolCreateInfo const pool_info({}, _max_frames_in_flight, pool_size); // Flags, max sets, pool sizes
-	_descriptor_pool_u = _device_u->createDescriptorPoolUnique(pool_info);
-	LOG_INFO("Descriptor pool created.");
+void tomway::RenderSystem::create_descriptor_pools() {
+	std::array<vk::DescriptorPoolSize, 1> pool_sizes = {
+		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, _max_frames_in_flight)
+	};
+	
+	vk::DescriptorPoolCreateInfo pool_info {
+		{}, // Flags
+		_max_frames_in_flight, // Max sets, one uniform per frame
+		pool_sizes // Pool sizes array
+	};
+	
+	_descriptor_pool_main_u = _device_u->createDescriptorPoolUnique(pool_info);
+	
+	pool_sizes = {
+		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 1)
+	};
+	
+	pool_info = {
+		vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, // Flags
+		1, // Max sets, one uniform per frame
+		pool_sizes // Pool sizes array
+	};
+	
+	_descriptor_pool_imgui_u = _device_u->createDescriptorPoolUnique(pool_info);
+	LOG_INFO("Descriptor pools created.");
 }
 
 void tomway::RenderSystem::create_descriptor_set_layout() {
@@ -608,6 +668,13 @@ void tomway::RenderSystem::minimized() {
 	_window_minimized = true;
 }
 
+void tomway::RenderSystem::new_frame()
+{
+	ImGui_ImplVulkan_NewFrame();
+	ImGui::NewFrame();
+	ImGui::ShowDemoWindow();
+}
+
 void tomway::RenderSystem::pick_physical_device() {
 	uint32_t deviceCount = 0;
 	auto devices = _instance_u->enumeratePhysicalDevices();
@@ -619,7 +686,7 @@ void tomway::RenderSystem::pick_physical_device() {
 	for (auto device : devices) {
 		if (is_device_suitable(device, *_surface_u, _required_device_extensions)) {
 			_physical_device = device;
-			_msaa_samples = get_max_usable_sample_count(device);
+			// _msaa_samples = get_max_usable_sample_count(device);
 			_queue_indices = find_queue_families(device, *_surface_u);
 			LOG_INFO("Physical device selected.");
 			return;
@@ -674,6 +741,11 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 		nullptr); // Dynamic offsets
 
 	command_buffer.draw(static_cast<uint32_t>(_vertex_count), 1, 0, 0); // Vertex count, instance count, first vertex, first instance
+	
+	ImGui::Render();
+	auto const draw_data = ImGui::GetDrawData();
+	ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer, nullptr);
+	
 	command_buffer.endRenderPass();
 	command_buffer.end();
 }

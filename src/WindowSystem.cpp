@@ -2,8 +2,13 @@
 
 #include <AsyncInfo.h>
 #include <iostream>
+
 #include "HaglConstants.h"
 #include "HaglUtility.h"
+
+#include "imgui_impl_sdl2.h"
+#include "imgui.h"
+#include "imgui_internal.h"
 
 tomway::WindowSystem::WindowSystem(unsigned const width, unsigned const height)
 	: _window_width(width),
@@ -23,6 +28,26 @@ tomway::WindowSystem::WindowSystem(unsigned const width, unsigned const height)
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 	_window_id = SDL_GetWindowID(_window);
 	LOG_INFO("Window system initialized.");
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
+	
+	if (!ImGui_ImplSDL2_InitForVulkan(_window))
+	{
+		LOG_ERROR("ImGui failed to initialize SDL2 for Vulkan!");
+	}
+
+	LOG_INFO("Initialized ImGui for SDL2!");
+}
+
+tomway::WindowSystem::~WindowSystem()
+{
+	ImGui_ImplSDL2_Shutdown();
+	ImGui::DestroyContext();
 }
 
 vk::UniqueSurfaceKHR tomway::WindowSystem::create_vulkan_surface(const vk::Instance& instance) const
@@ -42,6 +67,11 @@ std::vector<const char*> tomway::WindowSystem::get_extensions() const {
 	return extensions;
 }
 
+bool tomway::WindowSystem::get_mouse_visible()
+{
+	return _mouse_visible;
+}
+
 void tomway::WindowSystem::get_vulkan_framebuffer_size(uint32_t& width, uint32_t& height) const {
 	int w, h;
 	SDL_Vulkan_GetDrawableSize(_window, &w, &h);
@@ -57,8 +87,11 @@ void tomway::WindowSystem::get_vulkan_framebuffer_size(uint32_t& width, uint32_t
 std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 	SDL_Event e;
 	std::vector<InputEvent> input_events;
+	ImGui_ImplSDL2_NewFrame();
 
 	while (SDL_PollEvent(&e)) {
+		ImGui_ImplSDL2_ProcessEvent(&e);
+		
 		switch (e.type) {
 		case SDL_WINDOWEVENT:
 			if (e.window.windowID == _window_id) {
@@ -105,7 +138,7 @@ std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 			InputEventType const type = to_input_event_type(static_cast<SDL_EventType>(e.type));
 
 			if (button != InputButton::NONE) {
-				input_events.push_back({ type, button, 0, 0 });
+				input_events.push_back({ type, button });
 			}
 			break;
 		}
@@ -123,7 +156,11 @@ std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 		}
 	}
 
-	SDL_WarpMouseInWindow(_window, _window_width / 2, _window_height / 2);
+	if (not _mouse_visible)
+	{
+		SDL_WarpMouseInWindow(_window, _window_width / 2, _window_height / 2);
+	}
+	
 	return input_events;
 }
 
@@ -133,6 +170,12 @@ void tomway::WindowSystem::register_framebuffer_resize_callback(std::function<vo
 
 void tomway::WindowSystem::register_minimized_callback(std::function<void()> const& callback) {
 	_minimized_callbacks.push_back(callback);
+}
+
+void tomway::WindowSystem::toggle_mouse()
+{
+	_mouse_visible = not _mouse_visible;
+	SDL_SetRelativeMouseMode(_mouse_visible ? SDL_FALSE : SDL_TRUE);
 }
 
 void tomway::WindowSystem::wait_while_minimized() {

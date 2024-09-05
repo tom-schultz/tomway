@@ -21,14 +21,15 @@ namespace tomway {
 		MOUSE_RIGHT,
 		SPACE,
 		L,
+		F1,
 	};
 
 	struct InputEvent
 	{
 		InputEventType type;
 		InputButton button;
-		float mouse_x;
-		float mouse_y;
+		float mouse_x = 0;
+		float mouse_y = 0;
 	};
 
 	InputEventType to_input_event_type(SDL_EventType const& sdl_event_type);
