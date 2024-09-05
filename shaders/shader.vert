@@ -15,6 +15,6 @@ layout(location = 0) out vec3 fragColor;
 void main() {
     gl_Position = transform.projection * transform.view * transform.model * vec4(inPosition, 1.0);
     float cosTheta = clamp(dot(inNormal, normalize(vec3(-1, 0.65, 0.3))), 0, 1);
-    vec3 ambient_light = vec3(0.0f, 0.0f, 0.5f) * vec3(0.1f);
+    vec3 ambient_light = vec3(0.025f);
     fragColor = inColor * ambient_light + inColor * vec3(1.0f, 1.0f, 1.0f) * cosTheta; 
 }

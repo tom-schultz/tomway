@@ -45,14 +45,17 @@ namespace tomway {
 		*/
 		
 		vk::UniqueInstance _instance_u;
-		vk::UniqueDevice _unique_device_u;
+		vk::UniqueDevice _device_u;
 		vk::UniqueSurfaceKHR _surface_u;
 		vk::UniqueSwapchainKHR _swapchain_u;
 		std::vector<vk::UniqueImageView> _image_views_u;
 		vk::UniqueRenderPass _render_pass_u;
-		vk::UniqueDescriptorSetLayout _uDescriptorSetLayout;
+		vk::UniqueDescriptorSetLayout _descriptor_set_layout_u;
 		vk::UniquePipelineLayout _pipeline_layout_u;
 		vk::UniquePipeline _graphics_pipeline_u;
+		vk::UniqueImage _depth_image_u;
+		vk::UniqueDeviceMemory _depth_image_memory_u;
+		vk::UniqueImageView _depth_image_view_u;
 		std::vector<vk::UniqueFramebuffer> _framebuffers_u;
 		vk::UniqueCommandPool _command_pool_u;
 		std::vector<vk::UniqueCommandBuffer> _command_buffers_u;
@@ -103,11 +106,17 @@ namespace tomway {
 
 		void create_command_buffer();
 		void create_command_pool();
+		void create_depth_resources();
 		void create_descriptor_pool();
 		void create_descriptor_sets();
 		void create_descriptor_set_layout();
 		void create_framebuffers();
 		void create_graphics_pipeline();
+		
+		void create_image_u(uint32_t width,uint32_t height, vk::Format image_format, vk::ImageTiling tiling_flags,
+			vk::ImageUsageFlagBits image_usage_flags, vk::MemoryPropertyFlagBits memory_property_flags,
+			vk::UniqueImage& image_u, vk::UniqueDeviceMemory& memory_u);
+		
 		void create_image_views();
 		void create_logical_device();
 		void create_swapchain();

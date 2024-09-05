@@ -9,6 +9,7 @@
 #include "TimeSystem.h"
 #include "WindowSystem.h"
 
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -88,10 +89,6 @@ int main(int argc, char* argv[])
 				}
 			}
 		}
-
-		// Inverted
-		vert_rot += mouse_y * delta * 180.0f;
-		hor_rot += mouse_x * delta * 180.0f;
 		
 		glm::vec3 right = glm::vec3(
 			cos(glm::radians(hor_rot)),
@@ -102,6 +99,12 @@ int main(int argc, char* argv[])
 		fwd[0] = cos(glm::radians(vert_rot)) * sin(glm::radians(hor_rot));
 		fwd[1] = cos(glm::radians(vert_rot)) * cos(glm::radians(hor_rot));
 		fwd[2] = sin(glm::radians(vert_rot));
+		
+		glm::vec3 up = glm::cross(right, fwd);
+
+		// Inverted
+		vert_rot += mouse_y * delta * 180.0f;
+		hor_rot += mouse_x * delta * 180.0f;
 		
 		float constexpr speed = 4.0f;
 		
@@ -117,8 +120,6 @@ int main(int argc, char* argv[])
 
 		tomway::Transform transform;
 		transform.model = glm::translate(transform.model, model_pos);
-
-		glm::vec3 up = glm::cross(right, fwd);
 
 		transform.view = glm::lookAt(
 			camera_pos,

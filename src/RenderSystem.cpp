@@ -26,11 +26,12 @@ tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& ce
 		create_logical_device();
 		create_swapchain();
 		create_image_views();
-		_render_pass_u = create_render_pass(_physical_device, *_unique_device_u, _swapchain_format, vk::SampleCountFlagBits::e1);
+		_render_pass_u = create_render_pass(_physical_device, *_device_u, _swapchain_format, vk::SampleCountFlagBits::e1);
 		create_descriptor_set_layout();
 		create_graphics_pipeline();
-		create_framebuffers();
 		create_command_pool();
+		create_depth_resources();
+		create_framebuffers();
 		create_command_buffer();
 		create_sync_objects();
 		create_vertex_buffers();
@@ -75,19 +76,19 @@ void tomway::RenderSystem::create_buffer(
 		usage_flags,
 		sharing_mode);
 
-	buffer_u = _unique_device_u->createBufferUnique(buffer_info);
-	auto const mem_requirements = _unique_device_u->getBufferMemoryRequirements(*buffer_u);
+	buffer_u = _device_u->createBufferUnique(buffer_info);
+	auto const mem_requirements = _device_u->getBufferMemoryRequirements(*buffer_u);
 
 	vk::MemoryAllocateInfo const allocate_info(
 		mem_requirements.size,
 		find_memory_type(mem_requirements.memoryTypeBits, memory_property_flags));
 
-	buffer_memory_u = _unique_device_u->allocateMemoryUnique(allocate_info);
-	_unique_device_u->bindBufferMemory(*buffer_u, *buffer_memory_u, 0);
+	buffer_memory_u = _device_u->allocateMemoryUnique(allocate_info);
+	_device_u->bindBufferMemory(*buffer_u, *buffer_memory_u, 0);
 }
 
 void tomway::RenderSystem::create_command_buffer() {
-	_command_buffers_u = _unique_device_u->allocateCommandBuffersUnique({
+	_command_buffers_u = _device_u->allocateCommandBuffersUnique({
 		*_command_pool_u,
 		vk::CommandBufferLevel::ePrimary,
 		_max_frames_in_flight });
@@ -98,7 +99,7 @@ void tomway::RenderSystem::create_command_buffer() {
 void tomway::RenderSystem::create_command_pool() {
 	auto queue_fam_indices = find_queue_families(_physical_device, *_surface_u);
 
-	_command_pool_u = _unique_device_u->createCommandPoolUnique({
+	_command_pool_u = _device_u->createCommandPoolUnique({
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
 		queue_fam_indices.graphics_family
 	});
@@ -106,14 +107,31 @@ void tomway::RenderSystem::create_command_pool() {
 	LOG_INFO("Command pool created.");
 }
 
+void tomway::RenderSystem::create_depth_resources()
+{
+	vk::Format const depth_format = find_depth_format(_physical_device);
+	
+	create_image_u(
+		_swapchain_extent.width,
+		_swapchain_extent.height,
+		depth_format,
+		vk::ImageTiling::eOptimal,
+		vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		vk::MemoryPropertyFlagBits::eDeviceLocal,
+		_depth_image_u,
+		_depth_image_memory_u);
+
+	_depth_image_view_u = create_image_view(*_device_u, *_depth_image_u, depth_format, vk::ImageAspectFlagBits::eDepth, 1);
+}
+
 void tomway::RenderSystem::create_descriptor_sets() {
 	// This line screams wrong at first glance - I'm taking a value in a resource handler and copying it
 	// multiple times in a vector! BUT, remember that the handler here doesn't call delete - it calls Vulkan
 	// Destroy commands. We don't actually *care* about the DescriptorSetLayout struct, it's a handle to the
 	// actual resource inside of Vulkan. We can copy the handle as many times as we like.
-	std::vector<vk::DescriptorSetLayout> layouts(_max_frames_in_flight, *_uDescriptorSetLayout);
+	std::vector<vk::DescriptorSetLayout> layouts(_max_frames_in_flight, *_descriptor_set_layout_u);
 	vk::DescriptorSetAllocateInfo const allocate_info(*_descriptor_pool_u, layouts);
-	_descriptor_sets = _unique_device_u->allocateDescriptorSets(allocate_info);
+	_descriptor_sets = _device_u->allocateDescriptorSets(allocate_info);
 
 	for (uint32_t i = 0; i < _max_frames_in_flight; i++) {
 		vk::DescriptorBufferInfo buffer_info(*_uniform_buffers_u[i], 0, sizeof(Transform)); // Buffer, offset, range/size
@@ -127,7 +145,7 @@ void tomway::RenderSystem::create_descriptor_sets() {
 			buffer_info,
 			nullptr); // Texel buffer view
 
-		_unique_device_u->updateDescriptorSets(descriptor_writes, nullptr);
+		_device_u->updateDescriptorSets(descriptor_writes, nullptr);
 	}
 
 	LOG_INFO("Descriptor sets created.");
@@ -136,7 +154,7 @@ void tomway::RenderSystem::create_descriptor_sets() {
 void tomway::RenderSystem::create_descriptor_pool() {
 	vk::DescriptorPoolSize pool_size(vk::DescriptorType::eUniformBuffer, _max_frames_in_flight);
 	vk::DescriptorPoolCreateInfo const pool_info({}, _max_frames_in_flight, pool_size); // Flags, max sets, pool sizes
-	_descriptor_pool_u = _unique_device_u->createDescriptorPoolUnique(pool_info);
+	_descriptor_pool_u = _device_u->createDescriptorPoolUnique(pool_info);
 	LOG_INFO("Descriptor pool created.");
 }
 
@@ -149,7 +167,7 @@ void tomway::RenderSystem::create_descriptor_set_layout() {
 		nullptr); // Immutable samplers
 
 	vk::DescriptorSetLayoutCreateInfo layout_info({}, transform_layout_binding); // Flags, bindings
-	_uDescriptorSetLayout = _unique_device_u->createDescriptorSetLayoutUnique(layout_info);
+	_descriptor_set_layout_u = _device_u->createDescriptorSetLayoutUnique(layout_info);
 	LOG_INFO("Descriptor set layout created.");
 }
 
@@ -159,15 +177,20 @@ void tomway::RenderSystem::create_framebuffers() {
 	// TODO - create color and image framebuffers
 
 	for (int i = 0; i < _framebuffers_u.size(); i++) {
+		std::array<vk::ImageView, 2> attachments = {
+			*_image_views_u[i],
+			*_depth_image_view_u
+		};
+		
 		vk::FramebufferCreateInfo create_info(
 			{}, // Flags
 			*_render_pass_u,
-			*_image_views_u[i], // Attachments
+			attachments, // Attachments
 			_swapchain_extent.width,
 			_swapchain_extent.height,
 			1); // Layers
 
-		_framebuffers_u[i] = _unique_device_u->createFramebufferUnique(create_info);
+		_framebuffers_u[i] = _device_u->createFramebufferUnique(create_info);
 	}
 
 	LOG_INFO("Framebuffers created.");
@@ -178,8 +201,8 @@ void tomway::RenderSystem::create_graphics_pipeline() {
 	std::vector<char> frag_shader_bytes = read_shader_bytes("shaders/frag.spv");
 	std::vector<char> vert_shader_bytes = read_shader_bytes("shaders/vert.spv");
 
-	vk::UniqueShaderModule frag_shader_module_u = create_shader_module(*_unique_device_u, frag_shader_bytes);
-	vk::UniqueShaderModule vert_shader_module_u = create_shader_module(*_unique_device_u, vert_shader_bytes);
+	vk::UniqueShaderModule frag_shader_module_u = create_shader_module(*_device_u, frag_shader_bytes);
+	vk::UniqueShaderModule vert_shader_module_u = create_shader_module(*_device_u, vert_shader_bytes);
 
 	vk::PipelineShaderStageCreateInfo frag_stage_create_info({}, vk::ShaderStageFlagBits::eFragment, *frag_shader_module_u, "main");
 	vk::PipelineShaderStageCreateInfo vert_stage_create_info({}, vk::ShaderStageFlagBits::eVertex, *vert_shader_module_u, "main");
@@ -236,7 +259,7 @@ void tomway::RenderSystem::create_graphics_pipeline() {
 		vk::False, // Alpha to coverage enable
 		vk::False); // Alpha to one enable
 
-	vk::PipelineColorBlendAttachmentState colorBlendAttachment(
+	vk::PipelineColorBlendAttachmentState color_blend_attachment(
 		vk::False, // Blend enable
 		vk::BlendFactor::eSrcAlpha, // Src color blend factor
 		vk::BlendFactor::eOneMinusSrcAlpha, // Dst color blend factor
@@ -246,37 +269,34 @@ void tomway::RenderSystem::create_graphics_pipeline() {
 		vk::BlendOp::eAdd, // Alpha blend op
 		vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA); 
 
-	vk::PipelineColorBlendStateCreateInfo colorBlending(
+	vk::PipelineColorBlendStateCreateInfo color_blending(
 		{}, // Flags
 		vk::False, // Logic op enable
 		vk::LogicOp::eCopy, // Logic op
-		colorBlendAttachment, // Attachments
+		color_blend_attachment, // Attachments
 		{ 0.0f, 0.0f, 0.0f, 0.0f }); // Blend constants
 
-	vk::PipelineLayoutCreateInfo pipelineLayoutInfo(
+	vk::PipelineLayoutCreateInfo pipeline_layout_info(
 		{}, // Flags
-		*_uDescriptorSetLayout, // Descriptor set layouts
+		*_descriptor_set_layout_u, // Descriptor set layouts
 		nullptr); // Push constant ranges
 
-	_pipeline_layout_u = _unique_device_u->createPipelineLayoutUnique(pipelineLayoutInfo);
+	_pipeline_layout_u = _device_u->createPipelineLayoutUnique(pipeline_layout_info);
 
-	// TODO - Depth stencil create info
-	/*
-	VkPipelineDepthStencilStateCreateInfo depthStencil = {
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-		.depthTestEnable = VK_TRUE,
-		.depthWriteEnable = VK_TRUE,
-		.depthCompareOp = VK_COMPARE_OP_LESS,
-		.depthBoundsTestEnable = VK_FALSE,
-		.minDepthBounds = 0.0f,
-		.maxDepthBounds = 1.0f,
-		.stencilTestEnable = VK_FALSE,
-		.front = {},
-		.back = {}
+	vk::PipelineDepthStencilStateCreateInfo depth_stencil_create_info {
+		{}, // Flags
+		vk::True, // Depth test enable
+		vk::True, // Depth write enable
+		vk::CompareOp::eLess,
+		vk::False, // Bounds test enable
+		vk::False, // Stencil test enable
+		{}, // Stencil op state front
+		{}, // Stencil op state back
+		0.0f, // Min depth bounds
+		1.0f, // Max depth bounds
 	};
-	*/
 
-	vk::GraphicsPipelineCreateInfo pipelineCreateInfo(
+	vk::GraphicsPipelineCreateInfo pipeline_create_info(
 		{}, // Flags
 		(uint32_t)shader_stages.size(),
 		shader_stages.data(),
@@ -286,8 +306,8 @@ void tomway::RenderSystem::create_graphics_pipeline() {
 		&viewport_state,
 		&rasterizer,
 		&multisampling,
-		nullptr, // Depth stencil state
-		&colorBlending,
+		&depth_stencil_create_info,
+		&color_blending,
 		&dynamic_state,
 		*_pipeline_layout_u,
 		*_render_pass_u,
@@ -295,16 +315,48 @@ void tomway::RenderSystem::create_graphics_pipeline() {
 		nullptr, // Base pipeline handle
 		-1); // Base pipeline index
 
-	auto result = _unique_device_u->createGraphicsPipeline(nullptr, pipelineCreateInfo);
-	_graphics_pipeline_u = vk::UniquePipeline(result.value);
+	_graphics_pipeline_u = _device_u->createGraphicsPipelineUnique(nullptr, pipeline_create_info).value;
 	LOG_INFO("Graphics pipeline created.");
+}
+		
+void tomway::RenderSystem::create_image_u(uint32_t width,uint32_t height, vk::Format image_format, vk::ImageTiling tiling_flags,
+	vk::ImageUsageFlagBits image_usage_flags, vk::MemoryPropertyFlagBits memory_property_flags,
+	vk::UniqueImage& image_u, vk::UniqueDeviceMemory& memory_u)
+{
+	vk::ImageCreateInfo const image_create_info {
+		{}, // Flags
+		vk::ImageType::e2D,
+		image_format,
+		{ width, height, 1 }, // Extent3D(width, height, depth)
+		1, // mip levels
+		1, // array layers
+		vk::SampleCountFlagBits::e1,
+		tiling_flags,
+		image_usage_flags,
+		vk::SharingMode::eExclusive,
+		{}, // Queue family index count
+		{}, // Queue family indices
+		vk::ImageLayout::eUndefined, // Initial image layout
+	};
+
+	image_u = _device_u->createImageUnique(image_create_info);
+	vk::MemoryRequirements const memory_requirements = _device_u->getImageMemoryRequirements(*image_u);
+	uint32_t const memory_type = find_memory_type(memory_requirements.memoryTypeBits, memory_property_flags);
+
+	vk::MemoryAllocateInfo const alloc_info {
+		memory_requirements.size,
+		memory_type
+	};
+
+	memory_u = _device_u->allocateMemoryUnique(alloc_info, nullptr);
+	_device_u->bindImageMemory(*image_u, *memory_u, 0);
 }
 
 void tomway::RenderSystem::create_image_views() {
 	_image_views_u.clear();
 
 	for (auto image : _images) {
-		_image_views_u.push_back(create_image_view(_unique_device_u.get(), image, _swapchain_format, vk::ImageAspectFlagBits::eColor, 1));
+		_image_views_u.push_back(create_image_view(_device_u.get(), image, _swapchain_format, vk::ImageAspectFlagBits::eColor, 1));
 	}
 
 	LOG_INFO("Image views created.");
@@ -341,9 +393,9 @@ void tomway::RenderSystem::create_logical_device() {
 		&deviceFeatures, // Device features
 		NULL); // pNext
 
-	_unique_device_u = _physical_device.createDeviceUnique(deviceCreateInfo);
-	_graphics_queue = _unique_device_u->getQueue(_queue_indices.graphics_family, 0);
-	_present_queue = _unique_device_u->getQueue(_queue_indices.present_family, 0);
+	_device_u = _physical_device.createDeviceUnique(deviceCreateInfo);
+	_graphics_queue = _device_u->getQueue(_queue_indices.graphics_family, 0);
+	_present_queue = _device_u->getQueue(_queue_indices.present_family, 0);
 	LOG_INFO("Logical device created.");
 }
 
@@ -389,8 +441,8 @@ void tomway::RenderSystem::create_swapchain() {
 		, true // clipped
 		, *_swapchain_u); // Old swapchain
 
-	_swapchain_u = _unique_device_u->createSwapchainKHRUnique(createInfo);
-	_images = _unique_device_u->getSwapchainImagesKHR(*_swapchain_u);
+	_swapchain_u = _device_u->createSwapchainKHRUnique(createInfo);
+	_images = _device_u->getSwapchainImagesKHR(*_swapchain_u);
 	_swapchain_extent = extent;
 	_swapchain_format = surfaceFormat.format;
 	LOG_INFO("Swapchain created.");
@@ -402,9 +454,9 @@ void tomway::RenderSystem::create_sync_objects() {
 	_in_flight_fences_u.resize(_max_frames_in_flight);
 
 	for (unsigned i = 0; i < _max_frames_in_flight; i++) {
-		_image_available_sems_u[i] = _unique_device_u->createSemaphoreUnique({});
-		_render_finished_sems_u[i] = _unique_device_u->createSemaphoreUnique({});
-		_in_flight_fences_u[i] = _unique_device_u->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
+		_image_available_sems_u[i] = _device_u->createSemaphoreUnique({});
+		_render_finished_sems_u[i] = _device_u->createSemaphoreUnique({});
+		_in_flight_fences_u[i] = _device_u->createFenceUnique({ vk::FenceCreateFlagBits::eSignaled });
 	}
 
 	LOG_INFO("Synchronization objects created.");
@@ -425,7 +477,7 @@ void tomway::RenderSystem::create_uniform_buffers() {
 			_uniform_buffers_u[i],
 			_uniform_buffers_memory_u[i]);
 
-		_uniform_buffers_mapped[i] = _unique_device_u->mapMemory(*_uniform_buffers_memory_u[i], 0, bufferSize);
+		_uniform_buffers_mapped[i] = _device_u->mapMemory(*_uniform_buffers_memory_u[i], 0, bufferSize);
 	}
 	
 	LOG_INFO("Uniform buffers created.");
@@ -440,7 +492,7 @@ void tomway::RenderSystem::create_vertex_buffers() {
 		_staging_buffer_u,
 		_staging_buffer_memory_u);
 
-	_staging_buffer_mapped = _unique_device_u->mapMemory(*_staging_buffer_memory_u, 0, _vertex_buffer_size);
+	_staging_buffer_mapped = _device_u->mapMemory(*_staging_buffer_memory_u, 0, _vertex_buffer_size);
 
 	create_buffer(
 		_vertex_buffer_size,
@@ -487,14 +539,14 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 	auto const vertices = _cell_geometry.get_vertices();
 	_vertex_count = vertices.size();
 	transfer_vertices(vertices);
-	_unique_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
+	_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
 
 	vk::Result result;
 	uint32_t imageIndex;
 
 	// TODO - figure out how to make this faster when in FIFO mode due to integrated graphics or whatever
 	// https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
-	std::tie(result, imageIndex) = _unique_device_u->acquireNextImageKHR(
+	std::tie(result, imageIndex) = _device_u->acquireNextImageKHR(
 		*_swapchain_u,
 		UINT64_MAX,
 		*_image_available_sems_u[_curr_frame],
@@ -505,7 +557,7 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 		return;
 	}
 
-	_unique_device_u->resetFences(*_in_flight_fences_u[_curr_frame]);
+	_device_u->resetFences(*_in_flight_fences_u[_curr_frame]);
 	_command_buffers_u[_curr_frame]->reset();
 	update_uniform_buffer(transform);
 	record_command_buffer(*_command_buffers_u[_curr_frame], imageIndex);
@@ -582,14 +634,21 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 	command_buffer.begin(beginInfo);
 	// I'm not sure this belongs in *this* function, but this is functionally where it should happen
 	copy_buffer(*_command_buffers_u[_curr_frame], *_staging_buffer_u, *_vertex_buffer_u, _vertex_buffer_size);
+
 	constexpr vk::ClearColorValue clear_color_value = vk::ClearColorValue { 0.0f, 0.0f, 0.0f, 1.0f };
-	vk::ClearValue clear_value = vk::ClearValue(clear_color_value);
+	constexpr vk::ClearDepthStencilValue clear_depth_value = vk::ClearDepthStencilValue { 1.0f, 0 };
+
+	std::array<vk::ClearValue, 2> clear_values {
+		vk::ClearValue(clear_color_value),
+		vk::ClearValue(clear_depth_value)
+	};
 
 	vk::RenderPassBeginInfo render_pass({
 		*_render_pass_u,
 		*_framebuffers_u[image_index],
 		{ vk::Offset2D(0, 0), _swapchain_extent }, // Render area
-		clear_value });
+		clear_values
+	});
 
 	command_buffer.beginRenderPass(render_pass, vk::SubpassContents::eInline);
 	command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_graphics_pipeline_u);
@@ -625,12 +684,13 @@ void tomway::RenderSystem::recreate_swapchain() {
 	_framebuffer_resized = false;
 	_window_minimized = false;
 
-	_unique_device_u->waitIdle();
+	_device_u->waitIdle();
 
 	// TODO - try recreating the swap chain while the old one is in-flight!
 
 	create_swapchain();
 	create_image_views();
+	create_depth_resources();
 	create_framebuffers();
 }
 
@@ -775,7 +835,7 @@ static vk::UniqueImageView tomway::create_image_view(const vk::Device& device, c
 }
 
 vk::UniqueRenderPass tomway::create_render_pass(const vk::PhysicalDevice& physical_device, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples) {
-	vk::AttachmentDescription colorAttachment(
+	vk::AttachmentDescription const color_attachment(
 		{}, // Flags
 		format, // Format
 		samples, // Sample count
@@ -787,7 +847,7 @@ vk::UniqueRenderPass tomway::create_render_pass(const vk::PhysicalDevice& physic
 		vk::ImageLayout::ePresentSrcKHR // Final layout
 	);
 
-	vk::AttachmentReference colorAttachmentRef(
+	vk::AttachmentReference constexpr color_attachment_ref(
 		0, // Attachment
 		vk::ImageLayout::eColorAttachmentOptimal
 	);
@@ -809,58 +869,57 @@ vk::UniqueRenderPass tomway::create_render_pass(const vk::PhysicalDevice& physic
 	//	vk::ImageLayout::eColorAttachmentOptimal
 	//);
 
-	//vk::AttachmentDescription depthAttachment(
-	//	{}, // Flags
-	//	hagl::findDepthFormat(physicalDevice), // Format
-	//	samples, // Sample count
-	//	vk::AttachmentLoadOp::eClear, // Load op
-	//	vk::AttachmentStoreOp::eStore, // Store op
-	//	vk::AttachmentLoadOp::eDontCare, // Stencil load op
-	//	vk::AttachmentStoreOp::eDontCare, // Stencil store op
-	//	vk::ImageLayout::eUndefined, // Initial layout
-	//	vk::ImageLayout::eDepthStencilAttachmentOptimal // Final layout
-	//);
+	vk::AttachmentDescription const depth_attachment(
+		{}, // Flags
+		find_depth_format(physical_device), // Format
+		samples, // Sample count
+		vk::AttachmentLoadOp::eClear, // Load op
+		vk::AttachmentStoreOp::eDontCare, // Store op
+		vk::AttachmentLoadOp::eDontCare, // Stencil load op
+		vk::AttachmentStoreOp::eDontCare, // Stencil store op
+		vk::ImageLayout::eUndefined, // Initial layout
+		vk::ImageLayout::eDepthStencilAttachmentOptimal // Final layout
+	);
 
-	//vk::AttachmentReference depthAttachmentRef(
-	//	2, // Attachment
-	//	vk::ImageLayout::eDepthStencilAttachmentOptimal
-	//);
+	vk::AttachmentReference constexpr depth_attachment_ref(
+		1, // Attachment
+		vk::ImageLayout::eDepthStencilAttachmentOptimal
+	);
 
-	vk::SubpassDescription subpass(
+	vk::SubpassDescription const subpass(
 		{}, // Flags
 		vk::PipelineBindPoint::eGraphics,
 		nullptr, // Input attachments
-		colorAttachmentRef, // Color attachment refs
+		color_attachment_ref, // Color attachment refs
 		//resolveAttachmentRef, // Resolve attachment refs
 		nullptr,
-		//&depthAttachmentRef, // Depth attachment ref, ptr for some reason...
-		nullptr // Preserve attachments
+		&depth_attachment_ref // Depth attachment ref, ptr for some reason...
 	);
 
 	vk::SubpassDependency dependency(
 		VK_SUBPASS_EXTERNAL, // Source subpass
 		0, // Dest subpass
-		vk::PipelineStageFlagBits::eColorAttachmentOutput, // Source stage mask
-		vk::PipelineStageFlagBits::eColorAttachmentOutput, // Dest stage mask
+		vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests, // Source stage mask
+		vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests, // Dest stage mask
 		vk::AccessFlagBits::eNone, // Source access mask
-		vk::AccessFlagBits::eColorAttachmentWrite, // Dest access mask
+		vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite, // Dest access mask
 		{} // Dependency flags
 	);
 
 	vk::AttachmentDescription attachments[]{
-		colorAttachment,
+		color_attachment,
 		//resolveAttachment,
-		//depthAttachment,
+		depth_attachment
 	};
 
-	vk::RenderPassCreateInfo createInfo(
+	vk::RenderPassCreateInfo const create_info(
 		{}, // Flags
 		attachments,
 		subpass,
 		dependency
 	);
 
-	return device.createRenderPassUnique(createInfo);
+	return device.createRenderPassUnique(create_info);
 }
 
 static vk::UniqueShaderModule tomway::create_shader_module(const vk::Device& device, const std::vector<char>& bytes) {
@@ -869,31 +928,30 @@ static vk::UniqueShaderModule tomway::create_shader_module(const vk::Device& dev
 }
 
 static vk::Format tomway::find_depth_format(const vk::PhysicalDevice& physical_device) {
-	std::vector<vk::Format> formats = {
+	std::vector<vk::Format> const formats = {
 		vk::Format::eD32Sfloat,
 		vk::Format::eD32SfloatS8Uint,
 		vk::Format::eD24UnormS8Uint
 	};
 
-	vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
-	vk::FormatFeatureFlags features = vk::FormatFeatureFlagBits::eDepthStencilAttachment;
-	vk::FormatProperties props;
+	vk::ImageTiling constexpr tiling = vk::ImageTiling::eOptimal;
+	vk::FormatFeatureFlags constexpr features = vk::FormatFeatureFlagBits::eDepthStencilAttachment;
 
-	for (auto format : formats) {
-		props = physical_device.getFormatProperties(format);
+	for (auto const format : formats) {
+		vk::FormatProperties props = physical_device.getFormatProperties(format);
 
-		bool hasLinear = (tiling == vk::ImageTiling::eLinear
+		bool const has_linear = (tiling == vk::ImageTiling::eLinear
 			&& (props.linearTilingFeatures & features) == features);
 
-		bool hasOptimal = (tiling == vk::ImageTiling::eOptimal
+		bool const has_optimal = (tiling == vk::ImageTiling::eOptimal
 			&& (props.optimalTilingFeatures & features) == features);
 
-		if (hasLinear || hasOptimal) {
+		if (has_linear || has_optimal) {
 			return format;
 		}
 	}
 
-	throw new std::runtime_error("Failed to find supported device format.\n");
+	throw std::runtime_error("Failed to find supported device format.\n");
 }
 
 static tomway::QueueFamilyIndices tomway::find_queue_families(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) {
