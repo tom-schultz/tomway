@@ -21,5 +21,6 @@ namespace tomway
         std::chrono::high_resolution_clock::time_point _start_time;
         float _tick_timer = 0;
         float _ticks_per_sec;
+        uint64_t _fps = 0;
     };
 }

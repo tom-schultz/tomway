@@ -11,7 +11,8 @@
 #include "imgui_internal.h"
 
 tomway::WindowSystem::WindowSystem(unsigned const width, unsigned const height)
-	: _window_width(width),
+	: _mouse_visible(true),
+	  _window_width(width),
 	  _window_height(height)
 {
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
@@ -25,7 +26,6 @@ tomway::WindowSystem::WindowSystem(unsigned const width, unsigned const height)
 		, 1024, 768
 		, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
-	SDL_SetRelativeMouseMode(SDL_TRUE);
 	_window_id = SDL_GetWindowID(_window);
 	LOG_INFO("Window system initialized.");
 

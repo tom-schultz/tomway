@@ -31,7 +31,7 @@ namespace tomway {
 
 	class RenderSystem {
 	public:
-		RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, unsigned max_frames_in_flight = 2);
+		RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, size_t max_vertex_count, unsigned max_frames_in_flight = 2);
 		~RenderSystem();
 
 		void draw_frame(Transform const& transform);
@@ -93,7 +93,7 @@ namespace tomway {
 		vk::Format _swapchain_format;
 		std::vector<void*> _uniform_buffers_mapped;
 		std::vector<const char*> _validation_layers = { VALIDATION_LAYERS };
-		size_t _vertex_count;
+		size_t _max_vertex_count;
 		size_t _vertex_buffer_size;
 		bool _window_minimized;
 		WindowSystem& _window_system;

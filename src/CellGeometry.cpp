@@ -59,10 +59,17 @@ tomway::CellGeometry::CellGeometry(CellContainer const* cells)
 void tomway::CellGeometry::bind_cells(CellContainer const* cells)
 {
     _cells = cells;
+	_vertices.reserve(cells->size() * BASE_VERTS.size() + BACKGROUND_VERT_COUNT);
 }
 
 std::vector<tomway::Vertex> const& tomway::CellGeometry::get_vertices()
 {
+    if (_cells->size() == 0)
+    {
+        _vertices.resize(0);
+        return _vertices;
+    }
+    
     _vertices.resize(_vertices.capacity());
     size_t verts_acquired = BACKGROUND_VERT_COUNT;
 
@@ -126,5 +133,10 @@ std::vector<tomway::Vertex> const& tomway::CellGeometry::get_vertices()
 
 size_t tomway::CellGeometry::get_vertex_count() const
 {
-    return _vertices.capacity();
+    return _vertices.size();
+}
+
+size_t tomway::CellGeometry::max_vertex_count(size_t max_cells)
+{
+    return max_cells * BASE_VERTS.size();
 }

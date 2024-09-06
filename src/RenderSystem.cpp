@@ -19,14 +19,14 @@ static void check_vk_result(VkResult err)
 		abort();
 }
 
-tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, unsigned max_frames_in_flight)
+tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, size_t max_vertex_count, unsigned max_frames_in_flight)
 	: _cell_geometry(cell_geometry),
 	  _curr_frame(0),
 	  _max_frames_in_flight(max_frames_in_flight),
 	  _queue_indices(),
 	  _swapchain_format(),
-	  _vertex_count(cell_geometry.get_vertex_count()),
-	  _vertex_buffer_size(_vertex_count * sizeof(Vertex)),
+	  _max_vertex_count(max_vertex_count),
+	  _vertex_buffer_size(_max_vertex_count * sizeof(Vertex)),
 	  _window_system(window_system)
 {
 	try {
@@ -597,7 +597,7 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 	}
 	
 	auto const vertices = _cell_geometry.get_vertices();
-	_vertex_count = vertices.size();
+	_max_vertex_count = vertices.size();
 	transfer_vertices(vertices);
 	_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
 
@@ -672,7 +672,6 @@ void tomway::RenderSystem::new_frame()
 {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui::NewFrame();
-	ImGui::ShowDemoWindow();
 }
 
 void tomway::RenderSystem::pick_physical_device() {
@@ -740,7 +739,7 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 		_descriptor_sets[_curr_frame],
 		nullptr); // Dynamic offsets
 
-	command_buffer.draw(static_cast<uint32_t>(_vertex_count), 1, 0, 0); // Vertex count, instance count, first vertex, first instance
+	command_buffer.draw(static_cast<uint32_t>(_max_vertex_count), 1, 0, 0); // Vertex count, instance count, first vertex, first instance
 	
 	ImGui::Render();
 	auto const draw_data = ImGui::GetDrawData();

@@ -3,4 +3,4 @@
 
 #pragma once
 
-#include <iostream>
+void draw_main_menu(bool* main_menu);

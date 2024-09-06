@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "InputEvent.h"
+#include <glm/glm.hpp>
 #include "SDL_vulkan.h"
 
 namespace tomway {

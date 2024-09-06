@@ -16,11 +16,12 @@ namespace tomway {
 		A,
 		S,
 		D,
+		L,
+		R,
 		ESCAPE,
 		MOUSE_LEFT,
 		MOUSE_RIGHT,
 		SPACE,
-		L,
 		F1,
 	};
 

@@ -2,9 +2,9 @@
 
 #include "HaglUtility.h"
 
-tomway::SimulationSystem::SimulationSystem(size_t const grid_size)
-    : _grid_size(grid_size),
-    _cells{ {grid_size}, {grid_size}}
+tomway::SimulationSystem::SimulationSystem()
+    : _grid_size(0),
+    _cells{ { 0 }, { 0 } }
 {
 }
 
@@ -18,7 +18,14 @@ tomway::CellContainer const* tomway::SimulationSystem::current_cells() const
     return &_cells[_index];
 }
 
-tomway::CellContainer const* tomway::SimulationSystem::step_simulation()
+void tomway::SimulationSystem::start(size_t const grid_size)
+{
+    _grid_size = grid_size;
+    _cells[0] = { _grid_size };
+    _cells[1] = { _grid_size };
+}
+
+void tomway::SimulationSystem::step_simulation()
 {
     unsigned int const new_index = (_index + 1) % 2;
     
@@ -46,7 +53,6 @@ tomway::CellContainer const* tomway::SimulationSystem::step_simulation()
     }
 
     _index = new_index;
-    return &_cells[_index];
 }
 
 inline size_t tomway::SimulationSystem::wrap(long long int val) const

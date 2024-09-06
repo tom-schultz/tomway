@@ -10,6 +10,7 @@ namespace tomway
         void bind_cells(CellContainer const* cells);
         std::vector<Vertex> const& get_vertices();
         size_t get_vertex_count() const;
+        static size_t max_vertex_count(size_t max_cells);
     private:
         static float constexpr BACKGROUND_VERT_COLOR = 0.025f;
         static unsigned int constexpr BACKGROUND_VERT_COUNT = 6;
