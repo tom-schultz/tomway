@@ -16,7 +16,7 @@
 
 #include "imgui.h"
 
-size_t constexpr GRID_SIZE = 100;
+size_t constexpr GRID_SIZE = 40;
 
 int main(int argc, char* argv[])
 {
@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
 	bool main_menu = true;
 
 	glm::vec3 fwd = {0, 0, 0};
-	float vert_rot = -90.0f;
+	float vert_rot = 90.0f;
 	float hor_rot = 0.01f;
 	
 	while (true) {
@@ -57,18 +57,6 @@ int main(int argc, char* argv[])
 		float mouse_x = 0, mouse_y = 0;
 		
 		delta = time_system.new_frame();
-		
-		glm::vec3 right = glm::vec3(
-			cos(glm::radians(hor_rot)),
-			sin(glm::radians(hor_rot)),
-			0
-		);
-		
-		glm::vec3 up = glm::cross(right, fwd);
-		
-		fwd[0] = cos(glm::radians(vert_rot)) * sin(glm::radians(hor_rot));
-		fwd[1] = cos(glm::radians(vert_rot)) * cos(glm::radians(hor_rot));
-		fwd[2] = sin(glm::radians(vert_rot));
 		
 		for (const auto event : input_events) {
 			if (event.type == tomway::InputEventType::MOUSE_MOTION)
@@ -98,7 +86,7 @@ int main(int argc, char* argv[])
 					esc = true;
 					break;
 				case tomway::InputButton::SPACE:
-					if (event.type == tomway::InputEventType::BUTTON_DOWN)
+					if (event.type == tomway::InputEventType::BUTTON_UP)
 					{
 						step = true;
 					}
@@ -127,6 +115,14 @@ int main(int argc, char* argv[])
 			break;	
 		}
 
+		glm::mat4 rotation_mat(1.0f);
+		rotation_mat = glm::rotate(rotation_mat, glm::radians(vert_rot), glm::vec3(1.0f, 0.0f, 0.0f));
+		rotation_mat = glm::rotate(rotation_mat, glm::radians(hor_rot), glm::vec3(0.0f, 0.0f, 1.0f));
+		
+		glm::vec3 right = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) * rotation_mat;
+		fwd = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) * rotation_mat;
+		glm::vec3 up = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) * rotation_mat;
+
 		if (r)
 		{
 			r = false;
@@ -148,8 +144,8 @@ int main(int argc, char* argv[])
 			if (not window_system.get_mouse_visible())
 			{
 				// Inverted
-				vert_rot += mouse_y * delta * 180.0f;
-				hor_rot += mouse_x * delta * 180.0f;
+				vert_rot -= mouse_y * delta * 180.0f;
+				hor_rot -= mouse_x * delta * 180.0f;
 		
 				float constexpr speed = 4.0f;
 		
