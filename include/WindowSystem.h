@@ -21,7 +21,8 @@ namespace tomway {
 		std::vector<InputEvent> handle_events();
 		void register_framebuffer_resize_callback(std::function<void()> const& callback);
 		void register_minimized_callback(std::function<void()> const& callback);
-		void toggle_mouse();
+		void set_mouse_visible(bool mouse_visible);
+		void toggle_mouse_visible();
 		void wait_while_minimized();
 	private:
 		std::vector<std::function<void()>> _framebuffer_resize_callbacks;

@@ -172,10 +172,15 @@ void tomway::WindowSystem::register_minimized_callback(std::function<void()> con
 	_minimized_callbacks.push_back(callback);
 }
 
-void tomway::WindowSystem::toggle_mouse()
+void tomway::WindowSystem::set_mouse_visible(bool mouse_visible)
 {
-	_mouse_visible = not _mouse_visible;
+	_mouse_visible = mouse_visible;
 	SDL_SetRelativeMouseMode(_mouse_visible ? SDL_FALSE : SDL_TRUE);
+}
+
+void tomway::WindowSystem::toggle_mouse_visible()
+{
+	set_mouse_visible(!_mouse_visible);
 }
 
 void tomway::WindowSystem::wait_while_minimized() {

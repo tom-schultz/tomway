@@ -159,7 +159,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
@@ -311,11 +311,33 @@
     <ProjectReference Include="vendor\sdl\VisualC\SDL\SDL.vcxproj">
       <Project>{81ce8daf-ebb2-4761-8e45-b71abcca8c68}</Project>
     </ProjectReference>
+    <ProjectReference Include="vendor\soloud\soloud.vcxproj">
+      <Project>{acc50c36-aa61-4266-b257-5d53b66ce387}</Project>
+      <Name>soloud</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="compile.bat" />
     <CustomBuild Include="shaders\shader.frag" />
     <CustomBuild Include="shaders\shader.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\audio\click5.ogg">
+	  <TargetPath>assets\audio\%(Filename)%(Extension)</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="assets\audio\bong_001.ogg">
+	  <TargetPath>assets\audio\%(Filename)%(Extension)</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="assets\audio\HoliznaCC0 - Cosmic Waves.mp3">
+	  <TargetPath>assets\audio\%(Filename)%(Extension)</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="assets\audio\LICENSES.txt">
+	  <TargetPath>assets\audio\%(Filename)%(Extension)</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

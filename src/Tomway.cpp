@@ -15,6 +15,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "imgui.h"
+#include "soloud.h"
+#include "soloud_wav.h"
+#include "soloud_wavstream.h"
 
 size_t constexpr GRID_SIZE = 40;
 
@@ -34,7 +37,7 @@ int main(int argc, char* argv[])
 	
 	uint32_t width, height;
 	glm::vec3 model_pos(0.0f, 0.0f, 0.0f);
-	glm::vec3 camera_pos(0, 0, GRID_SIZE);
+	glm::vec3 camera_pos(0.0f, 0.0f, GRID_SIZE);
 	
 	bool w = false;
 	bool a = false;
@@ -49,6 +52,19 @@ int main(int argc, char* argv[])
 	glm::vec3 fwd = {0, 0, 0};
 	float vert_rot = 90.0f;
 	float hor_rot = 0.01f;
+
+	SoLoud::Soloud soloud;
+	SoLoud::WavStream music_wav_stream;
+	SoLoud::Wav button_wav;
+	SoLoud::Wav iteration_wav;
+	soloud.init();
+	
+	music_wav_stream.load("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
+	button_wav.load("assets/audio/click5.ogg");
+	iteration_wav.load("assets/audio/bong_001.ogg");
+	
+	auto music_voice = soloud.play(music_wav_stream, 0);
+	soloud.fadeVolume(music_voice, 0.2f, 90);
 	
 	while (true) {
 		auto input_events = window_system.handle_events();
@@ -80,7 +96,10 @@ int main(int argc, char* argv[])
 					d = event.type == tomway::InputEventType::BUTTON_DOWN;
 					break;
 				case tomway::InputButton::R:
-					r = event.type == tomway::InputEventType::BUTTON_UP;
+					if (event.type == tomway::InputEventType::BUTTON_UP )
+					{
+						r = true;
+					}
 					break;
 				case tomway::InputButton::ESCAPE:
 					esc = true;
@@ -101,7 +120,7 @@ int main(int argc, char* argv[])
 				case tomway::InputButton::F1:
 					if (event.type == tomway::InputEventType::BUTTON_DOWN)
 					{
-						window_system.toggle_mouse();
+						window_system.toggle_mouse_visible();
 					}
 					
 					break;
@@ -112,9 +131,9 @@ int main(int argc, char* argv[])
 		
 		if (esc)
 		{
-			break;	
+			break;
 		}
-
+		
 		glm::mat4 rotation_mat(1.0f);
 		rotation_mat = glm::rotate(rotation_mat, glm::radians(vert_rot), glm::vec3(1.0f, 0.0f, 0.0f));
 		rotation_mat = glm::rotate(rotation_mat, glm::radians(hor_rot), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -129,14 +148,21 @@ int main(int argc, char* argv[])
 			simulation_system.start(0);
 			main_menu = true;
 			locked = true;
+			window_system.set_mouse_visible(true);
+			camera_pos = { 0.0f, 0.0f, GRID_SIZE };
+			hor_rot = 0;
+			vert_rot = 90;
 		}
-		else if (main_menu)
+
+		if (main_menu)
 		{
 			draw_main_menu(&main_menu);
 			
 			if (not main_menu)
 			{
 				simulation_system.start(GRID_SIZE);
+				soloud.play(button_wav, 0.2f);
+				window_system.set_mouse_visible(false);
 			}
 		}
 		else
@@ -159,6 +185,7 @@ int main(int argc, char* argv[])
 			{
 				simulation_system.step_simulation();
 				step = false;
+				soloud.play(iteration_wav, max(0.03f, soloud.getVolume(music_voice) / 3));
 			}
 		}
 
