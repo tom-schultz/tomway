@@ -16,8 +16,7 @@
 
 #include "imgui.h"
 #include "soloud.h"
-#include "soloud_wav.h"
-#include "soloud_wavstream.h"
+#include "audio/AudioSystem.h"
 
 size_t constexpr GRID_SIZE = 40;
 
@@ -26,6 +25,7 @@ int main(int argc, char* argv[])
 	tomway::SimulationSystem simulation_system;	
 	tomway::CellGeometry cell_geometry_generator(simulation_system.current_cells());
 	tomway::WindowSystem window_system(1024, 768);
+	tomway::AudioSystem audio_system;
 	
 	tomway::RenderSystem render_system(
 		window_system,
@@ -53,18 +53,12 @@ int main(int argc, char* argv[])
 	float vert_rot = 90.0f;
 	float hor_rot = 0.01f;
 
-	SoLoud::Soloud soloud;
-	SoLoud::WavStream music_wav_stream;
-	SoLoud::Wav button_wav;
-	SoLoud::Wav iteration_wav;
-	soloud.init();
-	
-	music_wav_stream.load("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
-	button_wav.load("assets/audio/click5.ogg");
-	iteration_wav.load("assets/audio/bong_001.ogg");
-	
-	auto music_voice = soloud.play(music_wav_stream, 0);
-	soloud.fadeVolume(music_voice, 0.2f, 90);
+	auto music_audio = tomway::AudioSystem::stream_file("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
+	auto music_channel = tomway::AudioSystem::play(music_audio, tomway::ChannelGroup::MUSIC, 0);
+	tomway::AudioSystem::fade(music_channel, 0.2f, 90);
+
+	auto button_audio = tomway::AudioSystem::load_file("assets/audio/click5.ogg");
+	auto iteration_audio = tomway::AudioSystem::load_file("assets/audio/bong_001.ogg");
 	
 	while (true) {
 		auto input_events = window_system.handle_events();
@@ -144,6 +138,7 @@ int main(int argc, char* argv[])
 
 		if (r)
 		{
+			tomway::AudioSystem::play(button_audio, tomway::ChannelGroup::SFX, 0.2f);
 			r = false;
 			simulation_system.start(0);
 			main_menu = true;
@@ -161,7 +156,7 @@ int main(int argc, char* argv[])
 			if (not main_menu)
 			{
 				simulation_system.start(GRID_SIZE);
-				soloud.play(button_wav, 0.2f);
+				tomway::AudioSystem::play(button_audio, tomway::ChannelGroup::SFX, 0.2f);
 				window_system.set_mouse_visible(false);
 			}
 		}
@@ -185,7 +180,8 @@ int main(int argc, char* argv[])
 			{
 				simulation_system.step_simulation();
 				step = false;
-				soloud.play(iteration_wav, max(0.03f, soloud.getVolume(music_voice) / 3));
+				float iteration_vol = max(0.03f, tomway::AudioSystem::get_volume(music_channel) / 2);
+				tomway::AudioSystem::play(iteration_audio, tomway::ChannelGroup::SFX, iteration_vol);
 			}
 		}
 
