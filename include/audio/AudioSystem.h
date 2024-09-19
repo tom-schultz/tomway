@@ -31,6 +31,8 @@ namespace tomway
         static void stop(Channel const& channel);
         static void set_volume(ChannelGroup channel_group, float vol);
         static void set_global_volume(float global_vol);
+
+        void new_frame();
     private:
         static inline void check_system_ready();
         static AudioSystem* _inst;

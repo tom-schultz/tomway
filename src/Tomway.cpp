@@ -64,6 +64,7 @@ int main(int argc, char* argv[])
 		auto input_events = window_system.handle_events();
 		render_system.new_frame();
 		window_system.get_vulkan_framebuffer_size(width, height);
+		audio_system.new_frame();
 		float mouse_x = 0, mouse_y = 0;
 		
 		delta = time_system.new_frame();

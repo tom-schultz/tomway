@@ -1,5 +1,6 @@
 #pragma once
 #include "CellContainer.h"
+#include "Vertex.h"
 
 namespace tomway
 {

@@ -1,8 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <Vertex.h>
-
 namespace tomway {
 	class CellGeometry;
 

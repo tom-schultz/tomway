@@ -20,6 +20,30 @@ tomway::AudioSystem::~AudioSystem()
     _soloud.deinit();
 }
 
+void tomway::AudioSystem::check_system_ready()
+{
+    if (not _inst) throw std::runtime_error("Audio system not available");
+}
+
+void tomway::AudioSystem::fade(Channel const& channel, float target, float time)
+{
+    check_system_ready();
+    if (not channel) return;
+    
+    _inst->_soloud.fadeVolume(channel._impl, target, time);
+}
+
+float tomway::AudioSystem::get_volume(Channel const& channel)
+{
+    check_system_ready();
+    return channel._volume;
+}
+
+float tomway::AudioSystem::get_volume(ChannelGroup channel_group)
+{
+    return _inst->_group_volumes[channel_group];
+}
+
 tomway::Audio tomway::AudioSystem::load_file(std::string const& path)
 {
     check_system_ready();
@@ -52,12 +76,13 @@ tomway::Channel tomway::AudioSystem::play(Audio const& audio, ChannelGroup chann
         _inst->_group_channels[channel_group] = {};
         _inst->_group_volumes[channel_group] = 1.0f;
     }
-
-    _inst->_group_channels[channel_group].push_back(channel);
+    
     float const group_vol = _inst->_group_volumes[channel_group];
     float const global_vol = _inst->_soloud.getGlobalVolume();
     channel._impl = _inst->_soloud.play(*audio._impl, vol * group_vol * global_vol);
     channel._volume = vol;
+    _inst->_group_channels[channel_group].push_back(channel);
+    
     return channel;
 }
 
@@ -96,31 +121,25 @@ void tomway::AudioSystem::set_global_volume(float global_vol)
         group_vol = _inst->_group_volumes[pair.first];
         
         for (auto const& channel : pair.second) {
+            if (not _inst->_soloud.isValidVoiceHandle(channel._impl)) continue;
             _inst->_soloud.setVolume(channel._impl, channel._volume * group_vol * global_vol);
         }
     }
 }
 
-void tomway::AudioSystem::fade(Channel const& channel, float target, float time)
+void tomway::AudioSystem::new_frame()
 {
     check_system_ready();
-    if (not channel) return;
     
-    _inst->_soloud.fadeVolume(channel._impl, target, time);
-}
-
-float tomway::AudioSystem::get_volume(Channel const& channel)
-{
-    check_system_ready();
-    return channel._volume;
-}
-
-float tomway::AudioSystem::get_volume(ChannelGroup channel_group)
-{
-    return _inst->_group_volumes[channel_group];
-}
-
-void tomway::AudioSystem::check_system_ready()
-{
-    if (not _inst) throw std::runtime_error("Audio system not available");
+    for(auto& pair : _inst->_group_channels)
+    {
+        auto& channels = pair.second;
+        
+        for (size_t i = 0; i < channels.size(); i++) {
+            if (_soloud.isValidVoiceHandle(channels[i]._impl)) continue;
+            
+            channels.erase(channels.begin() + i);
+            i--;
+        }
+    }
 }
