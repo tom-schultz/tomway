@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\vendor\nfd\include;$(ProjectDir)\vendor\rapidjson;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,7 +129,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\vendor\nfd\include;$(ProjectDir)\vendor\rapidjson;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,7 +144,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\vendor\nfd\include;$(ProjectDir)\vendor\rapidjson;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -159,7 +159,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\vendor\nfd\include;$(ProjectDir)\vendor\rapidjson;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
@@ -202,7 +202,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\vendor\nfd\include;$(ProjectDir)\vendor\rapidjson;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
       <Optimization>MaxSpeed</Optimization>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
@@ -243,7 +243,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS; WIN32; NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\vendor\nfd\include;$(ProjectDir)\vendor\rapidjson;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -309,22 +309,44 @@
     <ClInclude Include="include\Vertex.h" />
     <ClInclude Include="include\Transform.h" />
     <ClInclude Include="include\InputEvent.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="vendor\IMGUI\IMGUI.vcxproj">
-      <Project>{33fbe88b-e47a-49cb-a857-5540ea8c0319}</Project>
-      <Name>IMGUI</Name>
-    </ProjectReference>
-    <ProjectReference Include="vendor\sdl\VisualC\SDLmain\SDLmain.vcxproj">
-      <Project>{da956fd3-e142-46f2-9dd5-c78bebb56b7a}</Project>
-    </ProjectReference>
-    <ProjectReference Include="vendor\sdl\VisualC\SDL\SDL.vcxproj">
-      <Project>{81ce8daf-ebb2-4761-8e45-b71abcca8c68}</Project>
-    </ProjectReference>
-    <ProjectReference Include="vendor\soloud\soloud.vcxproj">
-      <Project>{acc50c36-aa61-4266-b257-5d53b66ce387}</Project>
-      <Name>soloud</Name>
-    </ProjectReference>
+    <ClInclude Include="vendor\rapidjson\rapidjson\allocators.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\cursorstreamwrapper.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\document.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\encodedstream.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\encodings.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\error\en.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\error\error.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\filereadstream.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\filewritestream.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\fwd.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\biginteger.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\clzll.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\diyfp.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\dtoa.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\ieee754.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\itoa.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\meta.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\pow10.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\regex.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\stack.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\strfunc.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\strtod.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\internal\swap.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\istreamwrapper.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\memorybuffer.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\memorystream.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\msinttypes\inttypes.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\msinttypes\stdint.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\ostreamwrapper.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\pointer.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\prettywriter.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\rapidjson.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\reader.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\schema.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\stream.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\stringbuffer.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\uri.h" />
+    <ClInclude Include="vendor\rapidjson\rapidjson\writer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="compile.bat" />
@@ -348,6 +370,28 @@
 	  <TargetPath>assets\audio\%(Filename)%(Extension)</TargetPath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="vendor\IMGUI\IMGUI.vcxproj">
+      <Project>{33fbe88b-e47a-49cb-a857-5540ea8c0319}</Project>
+      <Name>IMGUI</Name>
+    </ProjectReference>
+    <ProjectReference Include="vendor\nfd\nfd.vcxproj">
+      <Project>{655e4468-b119-4991-914a-bed652c2bca0}</Project>
+      <Name>nfd</Name>
+    </ProjectReference>
+    <ProjectReference Include="vendor\sdl\VisualC\SDLmain\SDLmain.vcxproj">
+      <Project>{da956fd3-e142-46f2-9dd5-c78bebb56b7a}</Project>
+      <Name>SDLmain</Name>
+    </ProjectReference>
+    <ProjectReference Include="vendor\sdl\VisualC\SDL\SDL.vcxproj">
+      <Project>{81ce8daf-ebb2-4761-8e45-b71abcca8c68}</Project>
+      <Name>SDL</Name>
+    </ProjectReference>
+    <ProjectReference Include="vendor\soloud\soloud.vcxproj">
+      <Project>{acc50c36-aa61-4266-b257-5d53b66ce387}</Project>
+      <Name>soloud</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

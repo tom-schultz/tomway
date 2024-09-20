@@ -50,6 +50,7 @@ namespace tomway
             { InputButton::MOUSE_RIGHT, {}},
             { InputButton::SPACE, {}},
             { InputButton::F1, {}},
+            { InputButton::F2, {}},
         };
     };
 }

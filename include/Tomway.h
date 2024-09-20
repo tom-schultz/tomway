@@ -2,5 +2,10 @@
 // or project specific include files.
 
 #pragma once
+#include <string>
 
-void draw_main_menu(bool* main_menu);
+namespace tomway
+{
+    void draw_main_menu(bool* main_menu);
+    std::string get_save_location();
+}

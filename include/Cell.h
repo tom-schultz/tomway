@@ -1,4 +1,5 @@
 #pragma once
+#include "rapidjson/document.h"
 
 namespace tomway {
 	class CellGeometry;
@@ -10,6 +11,7 @@ namespace tomway {
 		size_t get_x() const;
 		size_t get_y() const;
 		bool get_alive() const;
+		void serialize(rapidjson::Document& doc, rapidjson::Value& cell_array) const;
 		void set_alive(bool alive);
 	private:
 		size_t _x, _y;

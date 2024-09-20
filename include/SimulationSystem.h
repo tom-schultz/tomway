@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "CellContainer.h"
 
 namespace tomway
@@ -10,6 +12,7 @@ namespace tomway
         SimulationSystem();
         size_t get_cell_count() const;
         CellContainer const* get_current_cells() const;
+        std::string serialize() const;
         void start(size_t const grid_size);
         void step_simulation();
     private:

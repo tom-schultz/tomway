@@ -23,6 +23,7 @@ namespace tomway {
 		MOUSE_RIGHT,
 		SPACE,
 		F1,
+		F2,
 	};
 
 	struct InputEvent

@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IMGUI", "vendor\IMGUI\IMGUI
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "soloud", "vendor\soloud\soloud.vcxproj", "{ACC50C36-AA61-4266-B257-5D53B66CE387}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nfd", "vendor\nfd\nfd.vcxproj", "{655E4468-B119-4991-914A-BED652C2BCA0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -83,6 +85,18 @@ Global
 		{ACC50C36-AA61-4266-B257-5D53B66CE387}.Release|x64.Build.0 = Release|x64
 		{ACC50C36-AA61-4266-B257-5D53B66CE387}.Release|x86.ActiveCfg = Release|Win32
 		{ACC50C36-AA61-4266-B257-5D53B66CE387}.Release|x86.Build.0 = Release|Win32
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Debug|x64.ActiveCfg = Debug|x64
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Debug|x64.Build.0 = Debug|x64
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Debug|x86.ActiveCfg = Debug|Win32
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Debug|x86.Build.0 = Debug|Win32
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Perf|x64.ActiveCfg = Debug|Win32
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Perf|x64.Build.0 = Debug|Win32
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Perf|x86.ActiveCfg = Debug|Win32
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Perf|x86.Build.0 = Debug|Win32
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Release|x64.ActiveCfg = Release|x64
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Release|x64.Build.0 = Release|x64
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Release|x86.ActiveCfg = Release|Win32
+		{655E4468-B119-4991-914A-BED652C2BCA0}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

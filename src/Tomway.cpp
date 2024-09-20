@@ -1,6 +1,9 @@
 ﻿// tomway.cpp : Defines the entry point for the application.
 
 #include "Tomway.h"
+
+#include <fstream>
+
 #include "HaglUtility.h"
 #include "InputEvent.h"
 #include "RenderSystem.h"
@@ -15,7 +18,7 @@
 
 #include "CameraController.h"
 #include "imgui.h"
-#include "soloud.h"
+#include "nfd.h"
 #include "audio/AudioSystem.h"
 #include "input/InputSystem.h"
 
@@ -73,9 +76,20 @@ int main(int argc, char* argv[])
 			camera_controller.reset();
 		}
 
+		if (tomway::InputSystem::btn_just_up(tomway::InputButton::F2))
+		{
+			auto data = simulation_system.serialize();
+			auto save_path = tomway::get_save_location();
+
+			std::ofstream save_file;
+			save_file.open(save_path);
+			save_file << data;
+			save_file.close();
+		}
+
 		if (main_menu)
 		{
-			draw_main_menu(&main_menu);
+			tomway::draw_main_menu(&main_menu);
 			
 			if (not main_menu)
 			{
@@ -113,7 +127,7 @@ int main(int argc, char* argv[])
 	exit(0);
 }
 
-void draw_main_menu(bool* main_menu)
+void tomway::draw_main_menu(bool* main_menu)
 {
 	ImGuiWindowFlags constexpr window_flags =
 		ImGuiWindowFlags_NoDecoration
@@ -134,4 +148,24 @@ void draw_main_menu(bool* main_menu)
 	}
 
 	ImGui::End();
+}
+
+std::string tomway::get_save_location()
+{
+	nfdchar_t *outPath = NULL;
+	nfdresult_t result = NFD_OpenDialog( NULL, NULL, &outPath );
+        
+	if ( result == NFD_OKAY ) {
+		LOG_INFO(outPath);
+	}
+	else if ( result == NFD_CANCEL ) {
+		LOG_INFO("User pressed cancel.");
+	}
+	else {
+		LOG_ERROR("Error: %s\n", NFD_GetError() );
+	}
+
+	std::string ret(outPath);
+	free(outPath);
+	return ret;
 }

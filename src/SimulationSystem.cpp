@@ -1,6 +1,8 @@
 #include "SimulationSystem.h"
-
 #include "HaglUtility.h"
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/stringbuffer.h"
 
 tomway::SimulationSystem::SimulationSystem()
     : _grid_size(0),
@@ -16,6 +18,26 @@ size_t tomway::SimulationSystem::get_cell_count() const
 tomway::CellContainer const* tomway::SimulationSystem::get_current_cells() const
 {
     return &_cells[_index];
+}
+
+std::string tomway::SimulationSystem::serialize() const
+{
+    rapidjson::Document document;
+    rapidjson::Value cell_array;
+    cell_array.SetArray();
+    
+    for (auto const& cell : _cells[_index])
+    {
+        cell.serialize(document, cell_array);
+    }
+
+    document.SetObject();
+    document.AddMember("cells", cell_array, document.GetAllocator());
+    document.AddMember("grid_size", _grid_size, document.GetAllocator());
+    rapidjson::StringBuffer sb;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+    document.Accept(writer);    // Accept() traverses the DOM and generates Handler events.
+    return sb.GetString();
 }
 
 void tomway::SimulationSystem::start(size_t const grid_size)
