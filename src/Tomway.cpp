@@ -17,15 +17,17 @@
 #include "imgui.h"
 #include "soloud.h"
 #include "audio/AudioSystem.h"
+#include "input/InputSystem.h"
 
 size_t constexpr GRID_SIZE = 40;
 
 int main(int argc, char* argv[])
 {
 	tomway::SimulationSystem simulation_system;	
-	tomway::CellGeometry cell_geometry_generator(simulation_system.current_cells());
+	tomway::CellGeometry cell_geometry_generator(simulation_system.get_current_cells());
 	tomway::WindowSystem window_system(1024, 768);
 	tomway::AudioSystem audio_system;
+	tomway::InputSystem input_system;
 	
 	tomway::RenderSystem render_system(
 		window_system,
@@ -39,12 +41,6 @@ int main(int argc, char* argv[])
 	glm::vec3 model_pos(0.0f, 0.0f, 0.0f);
 	glm::vec3 camera_pos(0.0f, 0.0f, GRID_SIZE);
 	
-	bool w = false;
-	bool a = false;
-	bool s = false;
-	bool d = false;
-	bool r = false;
-	bool esc = false;
 	bool step = false;
 	bool locked = true;
 	bool main_menu = true;
@@ -65,68 +61,25 @@ int main(int argc, char* argv[])
 		render_system.new_frame();
 		window_system.get_vulkan_framebuffer_size(width, height);
 		audio_system.new_frame();
-		float mouse_x = 0, mouse_y = 0;
-		
+		input_system.new_frame();
+		input_system.process_events(input_events);
 		delta = time_system.new_frame();
 		
-		for (const auto event : input_events) {
-			if (event.type == tomway::InputEventType::MOUSE_MOTION)
-			{
-				mouse_x = event.mouse_x;
-				mouse_y = event.mouse_y;
-			}
-			else if (event.type == tomway::InputEventType::BUTTON_DOWN || event.type == tomway::InputEventType::BUTTON_UP)
-			{
-				switch (event.button) {  // NOLINT(clang-diagnostic-switch-enum)
-				case tomway::InputButton::W:
-					w = event.type == tomway::InputEventType::BUTTON_DOWN;
-					break;
-				case tomway::InputButton::A:
-					a = event.type == tomway::InputEventType::BUTTON_DOWN;
-					break;
-				case tomway::InputButton::S:
-					s = event.type == tomway::InputEventType::BUTTON_DOWN;
-					break;
-				case tomway::InputButton::D:
-					d = event.type == tomway::InputEventType::BUTTON_DOWN;
-					break;
-				case tomway::InputButton::R:
-					if (event.type == tomway::InputEventType::BUTTON_UP )
-					{
-						r = true;
-					}
-					break;
-				case tomway::InputButton::ESCAPE:
-					esc = true;
-					break;
-				case tomway::InputButton::SPACE:
-					if (event.type == tomway::InputEventType::BUTTON_UP)
-					{
-						step = true;
-					}
-					break;
-				case tomway::InputButton::L:
-					if (event.type == tomway::InputEventType::BUTTON_DOWN)
-					{
-						locked = !locked;
-					}
-				
-					break;
-				case tomway::InputButton::F1:
-					if (event.type == tomway::InputEventType::BUTTON_DOWN)
-					{
-						window_system.toggle_mouse_visible();
-					}
-					
-					break;
-				default: break;
-				}
-			}
-		}
-		
-		if (esc)
+		if (tomway::InputSystem::btn_just_down(tomway::InputButton::ESCAPE)) break;
+		if (tomway::InputSystem::btn_just_up(tomway::InputButton::SPACE)) step = true;
+		if (tomway::InputSystem::btn_just_up(tomway::InputButton::L)) locked = !locked;
+		if (tomway::InputSystem::btn_just_up(tomway::InputButton::F1)) window_system.toggle_mouse_visible();
+
+		if (tomway::InputSystem::btn_just_up(tomway::InputButton::R))
 		{
-			break;
+			tomway::AudioSystem::play(button_audio, tomway::ChannelGroup::SFX, 0.2f);
+			simulation_system.start(0);
+			main_menu = true;
+			locked = true;
+			window_system.set_mouse_visible(true);
+			camera_pos = { 0.0f, 0.0f, GRID_SIZE };
+			hor_rot = 0;
+			vert_rot = 90;
 		}
 		
 		glm::mat4 rotation_mat(1.0f);
@@ -136,19 +89,6 @@ int main(int argc, char* argv[])
 		glm::vec3 right = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) * rotation_mat;
 		fwd = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) * rotation_mat;
 		glm::vec3 up = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) * rotation_mat;
-
-		if (r)
-		{
-			tomway::AudioSystem::play(button_audio, tomway::ChannelGroup::SFX, 0.2f);
-			r = false;
-			simulation_system.start(0);
-			main_menu = true;
-			locked = true;
-			window_system.set_mouse_visible(true);
-			camera_pos = { 0.0f, 0.0f, GRID_SIZE };
-			hor_rot = 0;
-			vert_rot = 90;
-		}
 
 		if (main_menu)
 		{
@@ -165,16 +105,18 @@ int main(int argc, char* argv[])
 		{
 			if (not window_system.get_mouse_visible())
 			{
+				glm::vec2 mouse_vel = tomway::InputSystem::get_mouse_vel();
+				
 				// Inverted
-				vert_rot -= mouse_y * delta * 180.0f;
-				hor_rot -= mouse_x * delta * 180.0f;
+				vert_rot -= mouse_vel.y * delta * 180.0f;
+				hor_rot -= mouse_vel.x * delta * 180.0f;
 		
 				float constexpr speed = 4.0f;
 		
-				if (w) camera_pos += fwd * speed * delta;
-				if (s) camera_pos -= fwd * speed * delta;
-				if (a) camera_pos -= right * speed * delta;
-				if (d) camera_pos += right * speed * delta;
+				if (tomway::InputSystem::btn_down(tomway::InputButton::W)) camera_pos += fwd * speed * delta;
+				if (tomway::InputSystem::btn_down(tomway::InputButton::S)) camera_pos -= fwd * speed * delta;
+				if (tomway::InputSystem::btn_down(tomway::InputButton::A)) camera_pos -= right * speed * delta;
+				if (tomway::InputSystem::btn_down(tomway::InputButton::D)) camera_pos += right * speed * delta;
 			}
 		
 			if ((!locked && time_system.get_new_tick()) || step)
@@ -201,7 +143,7 @@ int main(int argc, char* argv[])
 			1000.0f);
 
 		transform.projection[1][1] *= -1;
-		auto cells = simulation_system.current_cells();
+		auto cells = simulation_system.get_current_cells();
 		cell_geometry_generator.bind_cells(cells);
 		render_system.draw_frame(transform);
 	}

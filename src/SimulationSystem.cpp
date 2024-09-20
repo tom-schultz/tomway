@@ -13,7 +13,7 @@ size_t tomway::SimulationSystem::get_cell_count() const
     return _cells[_index].size();
 }
 
-tomway::CellContainer const* tomway::SimulationSystem::current_cells() const
+tomway::CellContainer const* tomway::SimulationSystem::get_current_cells() const
 {
     return &_cells[_index];
 }

@@ -3,14 +3,14 @@
 #include "SDL.h"
 
 namespace tomway {
-	enum InputEventType {
+	enum class InputEventType {
 		UNSUPPORTED = 0,
 		BUTTON_DOWN,
 		BUTTON_UP,
 		MOUSE_MOTION
 	};
 
-	enum InputButton {
+	enum class InputButton {
 		NONE = 0,
 		W,
 		A,
@@ -29,8 +29,8 @@ namespace tomway {
 	{
 		InputEventType type;
 		InputButton button;
-		float mouse_x = 0;
-		float mouse_y = 0;
+		float mouse_x_vel = 0;
+		float mouse_y_vel = 0;
 	};
 
 	InputEventType to_input_event_type(SDL_EventType const& sdl_event_type);

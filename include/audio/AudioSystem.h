@@ -13,7 +13,7 @@ namespace tomway
     
     class AudioSystem
     {
-    public:        
+    public:
         AudioSystem();
         ~AudioSystem();
         

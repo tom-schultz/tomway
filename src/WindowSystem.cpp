@@ -146,10 +146,10 @@ std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 			{
 				InputButton const button = to_input_button(e.button);
 				InputEventType const type = to_input_event_type(static_cast<SDL_EventType>(e.type));
-				float const mouse_x = e.motion.xrel;
-				float const mouse_y = e.motion.yrel;
+				float const mouse_x_vel = e.motion.xrel;
+				float const mouse_y_vel = e.motion.yrel;
 				
-				input_events.push_back({type, button, mouse_x, mouse_y});
+				input_events.push_back({type, button, mouse_x_vel, mouse_y_vel});
 			}
 		default:
 			break;
