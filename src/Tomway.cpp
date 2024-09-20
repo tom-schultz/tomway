@@ -1,5 +1,4 @@
 ﻿// tomway.cpp : Defines the entry point for the application.
-//
 
 #include "Tomway.h"
 #include "HaglUtility.h"
@@ -14,6 +13,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "CameraController.h"
 #include "imgui.h"
 #include "soloud.h"
 #include "audio/AudioSystem.h"
@@ -28,26 +28,19 @@ int main(int argc, char* argv[])
 	tomway::WindowSystem window_system(1024, 768);
 	tomway::AudioSystem audio_system;
 	tomway::InputSystem input_system;
+	tomway::TimeSystem time_system(5);
+	tomway::CameraController camera_controller({0.0f, 0.0f, GRID_SIZE}, 90.0f, 0.0f);
 	
 	tomway::RenderSystem render_system(
 		window_system,
 		cell_geometry_generator,
 		tomway::CellGeometry::max_vertex_count(GRID_SIZE * GRID_SIZE));
 
-	tomway::TimeSystem time_system(5);
 	float delta = 0;
-	
 	uint32_t width, height;
-	glm::vec3 model_pos(0.0f, 0.0f, 0.0f);
-	glm::vec3 camera_pos(0.0f, 0.0f, GRID_SIZE);
-	
 	bool step = false;
 	bool locked = true;
 	bool main_menu = true;
-
-	glm::vec3 fwd = {0, 0, 0};
-	float vert_rot = 90.0f;
-	float hor_rot = 0.01f;
 
 	auto music_audio = tomway::AudioSystem::stream_file("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
 	auto music_channel = tomway::AudioSystem::play(music_audio, tomway::ChannelGroup::MUSIC, 0);
@@ -77,18 +70,8 @@ int main(int argc, char* argv[])
 			main_menu = true;
 			locked = true;
 			window_system.set_mouse_visible(true);
-			camera_pos = { 0.0f, 0.0f, GRID_SIZE };
-			hor_rot = 0;
-			vert_rot = 90;
+			camera_controller.reset();
 		}
-		
-		glm::mat4 rotation_mat(1.0f);
-		rotation_mat = glm::rotate(rotation_mat, glm::radians(vert_rot), glm::vec3(1.0f, 0.0f, 0.0f));
-		rotation_mat = glm::rotate(rotation_mat, glm::radians(hor_rot), glm::vec3(0.0f, 0.0f, 1.0f));
-		
-		glm::vec3 right = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) * rotation_mat;
-		fwd = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) * rotation_mat;
-		glm::vec3 up = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) * rotation_mat;
 
 		if (main_menu)
 		{
@@ -105,18 +88,7 @@ int main(int argc, char* argv[])
 		{
 			if (not window_system.get_mouse_visible())
 			{
-				glm::vec2 mouse_vel = tomway::InputSystem::get_mouse_vel();
-				
-				// Inverted
-				vert_rot -= mouse_vel.y * delta * 180.0f;
-				hor_rot -= mouse_vel.x * delta * 180.0f;
-		
-				float constexpr speed = 4.0f;
-		
-				if (tomway::InputSystem::btn_down(tomway::InputButton::W)) camera_pos += fwd * speed * delta;
-				if (tomway::InputSystem::btn_down(tomway::InputButton::S)) camera_pos -= fwd * speed * delta;
-				if (tomway::InputSystem::btn_down(tomway::InputButton::A)) camera_pos -= right * speed * delta;
-				if (tomway::InputSystem::btn_down(tomway::InputButton::D)) camera_pos += right * speed * delta;
+				camera_controller.update(delta);
 			}
 		
 			if ((!locked && time_system.get_new_tick()) || step)
@@ -129,20 +101,10 @@ int main(int argc, char* argv[])
 		}
 
 		tomway::Transform transform;
-		transform.model = glm::translate(transform.model, model_pos);
-
-		transform.view = glm::lookAt(
-			camera_pos,
-			camera_pos + fwd,
-			up);
-
-		transform.projection = glm::perspective(
-			glm::radians(45.0f),
-			static_cast<float>(width) / static_cast<float>(height),
-			0.1f,
-			1000.0f);
-
-		transform.projection[1][1] *= -1;
+		// transform.model = glm::translate(transform.model, model_pos);
+		transform.view = camera_controller.get_view_transform();
+		transform.projection = camera_controller.get_projection_transform(width, height);
+		
 		auto cells = simulation_system.get_current_cells();
 		cell_geometry_generator.bind_cells(cells);
 		render_system.draw_frame(transform);
