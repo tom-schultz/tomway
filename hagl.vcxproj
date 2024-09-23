@@ -295,14 +295,14 @@
     <ClInclude Include="include\audio\AudioSystem.h" />
     <ClInclude Include="include\audio\Channel.h" />
     <ClInclude Include="include\CameraController.h" />
-    <ClInclude Include="include\Cell.h" />
-    <ClInclude Include="include\CellContainer.h" />
     <ClInclude Include="include\CellGeometry.h" />
     <ClInclude Include="include\HaglConstants.h" />
     <ClInclude Include="include\input\InputSystem.h" />
+    <ClInclude Include="include\simulation\Cell.h" />
+    <ClInclude Include="include\simulation\CellContainer.h" />
+    <ClInclude Include="include\simulation\SimulationSystem.h" />
     <ClInclude Include="include\Tomway.h" />
     <ClInclude Include="include\RenderSystem.h" />
-    <ClInclude Include="include\SimulationSystem.h" />
     <ClInclude Include="include\TimeSystem.h" />
     <ClInclude Include="include\WindowSystem.h" />
     <ClInclude Include="include\HaglUtility.h" />

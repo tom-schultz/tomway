@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "Cell.h"
+#include "simulation/Cell.h"
 
 namespace tomway
 {
@@ -25,6 +25,7 @@ namespace tomway
         const_iterator end() const;
         Cell get_cell(size_t x, size_t y) const;
         bool get_alive(size_t x, size_t y) const;
+		void randomize();
         void set_alive(size_t x, size_t y, bool alive);
         size_t size() const;
         size_t grid_size() const;

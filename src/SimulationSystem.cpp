@@ -1,4 +1,4 @@
-#include "SimulationSystem.h"
+#include "simulation/SimulationSystem.h"
 #include "HaglUtility.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
@@ -8,6 +8,24 @@ tomway::SimulationSystem::SimulationSystem()
     : _grid_size(0),
     _cells{ { 0 }, { 0 } }
 {
+}
+
+void tomway::SimulationSystem::deserialize(std::string const& json)
+{
+    rapidjson::Document document;
+    document.Parse(json.c_str());
+    auto const& json_data = document["cells"].GetArray();
+    _cells[0] = { _grid_size };
+    _cells[1] = { _grid_size };
+    _index = 0;
+
+    for (rapidjson::SizeType i = 0; i < json_data.Size(); i++)
+    {
+        auto const& json_cell = json_data[i].GetArray();
+        _cells[0].set_alive(json_cell[0].GetUint64(), json_cell[1].GetUint64(), true);
+    }
+
+    _grid_size = document["grid_size"].GetUint64();
 }
 
 size_t tomway::SimulationSystem::get_cell_count() const
@@ -44,7 +62,9 @@ void tomway::SimulationSystem::start(size_t const grid_size)
 {
     _grid_size = grid_size;
     _cells[0] = { _grid_size };
+    _cells[0].randomize();
     _cells[1] = { _grid_size };
+    _cells[1].randomize();
 }
 
 void tomway::SimulationSystem::step_simulation()

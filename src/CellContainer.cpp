@@ -1,4 +1,4 @@
-#include "CellContainer.h"
+#include "simulation/CellContainer.h"
 
 #include <random>
 
@@ -20,15 +20,11 @@ tomway::CellContainer::CellContainer(size_t grid_size)
 {
     _cells.reserve(grid_size * grid_size);
     
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::bernoulli_distribution dist(0.25f);
-    
     for (size_t y = 0; y < grid_size; y++)
     {
         for (size_t x = 0; x < grid_size;x++)
         {
-            _cells.emplace_back(x, y, dist(gen));
+            _cells.emplace_back(x, y, false);
         }
     }
 }
@@ -71,6 +67,18 @@ tomway::Cell tomway::CellContainer::get_cell(size_t x, size_t y) const
 bool tomway::CellContainer::get_alive(size_t x, size_t y) const
 {
     return _cells[y * _grid_size + x].get_alive();
+}
+
+void tomway::CellContainer::randomize()
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::bernoulli_distribution dist(0.25f);
+    
+    for (auto & cell : _cells)
+    {
+        cell.set_alive(dist(gen));
+    }
 }
 
 void tomway::CellContainer::set_alive(size_t x, size_t y, bool alive)

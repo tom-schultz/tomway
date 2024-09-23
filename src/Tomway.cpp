@@ -7,7 +7,7 @@
 #include "HaglUtility.h"
 #include "InputEvent.h"
 #include "RenderSystem.h"
-#include "SimulationSystem.h"
+#include "simulation/SimulationSystem.h"
 #include "TimeSystem.h"
 #include "WindowSystem.h"
 
@@ -79,12 +79,27 @@ int main(int argc, char* argv[])
 		if (tomway::InputSystem::btn_just_up(tomway::InputButton::F2))
 		{
 			auto data = simulation_system.serialize();
-			auto save_path = tomway::get_save_location();
-
+			auto save_path = tomway::get_file_location();
 			std::ofstream save_file;
+			
 			save_file.open(save_path);
 			save_file << data;
 			save_file.close();
+		}
+
+		if (tomway::InputSystem::btn_just_up(tomway::InputButton::F3))
+		{
+			auto save_path = tomway::get_file_location();
+			std::string data;
+			std::ifstream save_file;
+			
+			save_file.open(save_path);
+			save_file >> data;
+			save_file.close();
+			simulation_system.deserialize(data);
+			
+			window_system.set_mouse_visible(false);
+			camera_controller.reset();
 		}
 
 		if (main_menu)
@@ -150,7 +165,7 @@ void tomway::draw_main_menu(bool* main_menu)
 	ImGui::End();
 }
 
-std::string tomway::get_save_location()
+std::string tomway::get_file_location()
 {
 	nfdchar_t *outPath = NULL;
 	nfdresult_t result = NFD_OpenDialog( NULL, NULL, &outPath );

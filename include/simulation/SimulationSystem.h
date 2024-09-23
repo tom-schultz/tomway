@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "CellContainer.h"
+#include "simulation/CellContainer.h"
 
 namespace tomway
 {
@@ -10,6 +10,7 @@ namespace tomway
     {
     public:
         SimulationSystem();
+        void deserialize(std::string const& json);
         size_t get_cell_count() const;
         CellContainer const* get_current_cells() const;
         std::string serialize() const;

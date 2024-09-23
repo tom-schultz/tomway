@@ -24,6 +24,7 @@ namespace tomway {
 		SPACE,
 		F1,
 		F2,
+		F3,
 	};
 
 	struct InputEvent

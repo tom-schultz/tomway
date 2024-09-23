@@ -7,5 +7,5 @@
 namespace tomway
 {
     void draw_main_menu(bool* main_menu);
-    std::string get_save_location();
+    std::string get_file_location();
 }

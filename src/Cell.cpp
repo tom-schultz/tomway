@@ -1,4 +1,4 @@
-#include "Cell.h"
+#include "simulation/Cell.h"
 
 
 tomway::Cell::Cell(size_t x, size_t y, bool alive)
