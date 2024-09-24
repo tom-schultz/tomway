@@ -9,6 +9,7 @@
 #include "imgui_impl_sdl2.h"
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "Tracy.hpp"
 
 tomway::WindowSystem::WindowSystem(unsigned const width, unsigned const height)
 	: _mouse_visible(true),
@@ -85,6 +86,7 @@ void tomway::WindowSystem::get_vulkan_framebuffer_size(uint32_t& width, uint32_t
 }
 
 std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
+	ZoneScoped;
 	SDL_Event e;
 	std::vector<InputEvent> input_events;
 	ImGui_ImplSDL2_NewFrame();
@@ -174,12 +176,14 @@ void tomway::WindowSystem::register_minimized_callback(std::function<void()> con
 
 void tomway::WindowSystem::set_mouse_visible(bool mouse_visible)
 {
+    ZoneScoped;
 	_mouse_visible = mouse_visible;
 	SDL_SetRelativeMouseMode(_mouse_visible ? SDL_FALSE : SDL_TRUE);
 }
 
 void tomway::WindowSystem::toggle_mouse_visible()
 {
+    ZoneScoped;
 	set_mouse_visible(!_mouse_visible);
 }
 

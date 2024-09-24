@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Perf - Tracy" type="CompoundRunConfigurationType">
+    <toRun name="hagl" type="CppProject" />
+    <toRun name="Tracy Server" type="RunNativeExe" />
+    <method v="2" />
+  </configuration>
+</component>

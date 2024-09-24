@@ -15,6 +15,7 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include "Tracy.hpp"
 
 #include "CameraController.h"
 #include "imgui.h"
@@ -22,7 +23,7 @@
 #include "audio/AudioSystem.h"
 #include "input/InputSystem.h"
 
-size_t constexpr GRID_SIZE = 40;
+size_t constexpr GRID_SIZE = 600;
 
 int main(int argc, char* argv[])
 {
@@ -43,7 +44,18 @@ int main(int argc, char* argv[])
 	uint32_t width, height;
 	bool step = false;
 	bool locked = true;
+	
+#ifdef PERF
+	bool main_menu = false;
+	std::ifstream save_file;
+	std::string data;
+	save_file.open("test/600.json");
+	save_file >> data;
+	save_file.close();
+	simulation_system.deserialize(data);
+#else
 	bool main_menu = true;
+#endif
 
 	auto music_audio = tomway::AudioSystem::stream_file("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
 	auto music_channel = tomway::AudioSystem::play(music_audio, tomway::ChannelGroup::MUSIC, 0);
@@ -53,6 +65,7 @@ int main(int argc, char* argv[])
 	auto iteration_audio = tomway::AudioSystem::load_file("assets/audio/bong_001.ogg");
 	
 	while (true) {
+		ZoneScoped;
 		auto input_events = window_system.handle_events();
 		render_system.new_frame();
 		window_system.get_vulkan_framebuffer_size(width, height);
@@ -137,6 +150,7 @@ int main(int argc, char* argv[])
 		auto cells = simulation_system.get_current_cells();
 		cell_geometry_generator.bind_cells(cells);
 		render_system.draw_frame(transform);
+		FrameMark;
 	}
 
 	exit(0);
@@ -144,6 +158,7 @@ int main(int argc, char* argv[])
 
 void tomway::draw_main_menu(bool* main_menu)
 {
+    ZoneScoped;
 	ImGuiWindowFlags constexpr window_flags =
 		ImGuiWindowFlags_NoDecoration
 		| ImGuiWindowFlags_NoDocking
@@ -167,6 +182,7 @@ void tomway::draw_main_menu(bool* main_menu)
 
 std::string tomway::get_file_location()
 {
+    ZoneScoped;
 	nfdchar_t *outPath = NULL;
 	nfdresult_t result = NFD_OpenDialog( NULL, NULL, &outPath );
         

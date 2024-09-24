@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 
+#include "Tracy.hpp"
+
 tomway::InputSystem* tomway::InputSystem::_inst = nullptr;
 
 void tomway::InputSystem::check_system_ready()
@@ -27,6 +29,7 @@ bool tomway::InputSystem::btn_down(InputButton const btn)
 
 bool tomway::InputSystem::btn_just_down(InputButton const btn)
 {
+    ZoneScoped;
     check_system_ready();
     auto const state = _inst->_button_states.at(btn);
     return state.down and state.last_down == _inst->_tick;
@@ -34,6 +37,7 @@ bool tomway::InputSystem::btn_just_down(InputButton const btn)
 
 bool tomway::InputSystem::btn_just_up(InputButton const btn)
 {
+    ZoneScoped;
     check_system_ready();
     auto const state = _inst->_button_states.at(btn);
     return not state.down and state.last_up == _inst->_tick; 
@@ -52,6 +56,7 @@ void tomway::InputSystem::new_frame()
 
 void tomway::InputSystem::process_events(std::vector<InputEvent> const& events)
 {
+    ZoneScoped;
     _mouse_vel = {};
     
     for (auto const event : events)

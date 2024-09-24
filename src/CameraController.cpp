@@ -3,6 +3,7 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
+#include "Tracy.hpp"
 #include "input/InputSystem.h"
 
 tomway::CameraController::CameraController(glm::vec3 initial_pos, float initial_vert_rot, float initial_hor_rot)
@@ -13,10 +14,12 @@ tomway::CameraController::CameraController(glm::vec3 initial_pos, float initial_
 	_vert_rot(initial_vert_rot),
 	_vert_rot_initial(initial_vert_rot)
 {
+	update(0);
 }
 
 glm::mat4 tomway::CameraController::get_projection_transform(uint32_t width, uint32_t height) const
 {
+    ZoneScoped;
 	auto transform = glm::perspective(
 			glm::radians(_fov),
 			static_cast<float>(width) / static_cast<float>(height),
@@ -29,14 +32,19 @@ glm::mat4 tomway::CameraController::get_projection_transform(uint32_t width, uin
 
 glm::mat4 tomway::CameraController::get_view_transform() const
 {
-	return glm::lookAt(
+    ZoneScoped;
+	
+	auto const ret = glm::lookAt(
         _pos,
         _pos + _fwd,
         _up);
+
+	return ret;
 }
 
 void tomway::CameraController::reset()
 {
+    ZoneScoped;
 	_pos = _pos_initial;
 	_hor_rot = _hor_rot_initial;
 	_vert_rot = _vert_rot_initial;
@@ -44,6 +52,7 @@ void tomway::CameraController::reset()
 
 void tomway::CameraController::update(float delta)
 {
+    ZoneScoped;
 	glm::vec2 const mouse_vel = InputSystem::get_mouse_vel();
 				
 	// Inverted

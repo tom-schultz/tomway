@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Tracy Server" type="RunNativeExe" factoryName="Native Executable">
+    <option name="EXE_PATH" value="$PROJECT_DIR$/../../../tools/tracy/0.11.1/windows-0.11.1/tracy-profiler.exe" />
+    <option name="PROGRAM_PARAMETERS" value="-a 127.0.0.1" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../../tools/tracy/0.11.1/windows-0.11.1" />
+    <option name="PASS_PARENT_ENVS" value="1" />
+    <option name="USE_EXTERNAL_CONSOLE" value="0" />
+    <method v="2" />
+  </configuration>
+</component>

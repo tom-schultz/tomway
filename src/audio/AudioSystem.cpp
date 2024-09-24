@@ -5,6 +5,7 @@
 
 #include "soloud_wav.h"
 #include "soloud_wavstream.h"
+#include "Tracy.hpp"
 
 tomway::AudioSystem* tomway::AudioSystem::_inst = nullptr;
 
@@ -68,6 +69,7 @@ tomway::Audio tomway::AudioSystem::stream_file(std::string const& path)
 
 tomway::Channel tomway::AudioSystem::play(Audio const& audio, ChannelGroup channel_group, float vol)
 {
+    ZoneScoped;
     check_system_ready();
     Channel channel;
 

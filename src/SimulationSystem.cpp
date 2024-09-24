@@ -1,5 +1,6 @@
 #include "simulation/SimulationSystem.h"
 #include "HaglUtility.h"
+#include "Tracy.hpp"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/stringbuffer.h"
@@ -12,9 +13,11 @@ tomway::SimulationSystem::SimulationSystem()
 
 void tomway::SimulationSystem::deserialize(std::string const& json)
 {
+    ZoneScoped;
     rapidjson::Document document;
     document.Parse(json.c_str());
     auto const& json_data = document["cells"].GetArray();
+    _grid_size = document["grid_size"].GetUint64();
     _cells[0] = { _grid_size };
     _cells[1] = { _grid_size };
     _index = 0;
@@ -24,8 +27,6 @@ void tomway::SimulationSystem::deserialize(std::string const& json)
         auto const& json_cell = json_data[i].GetArray();
         _cells[0].set_alive(json_cell[0].GetUint64(), json_cell[1].GetUint64(), true);
     }
-
-    _grid_size = document["grid_size"].GetUint64();
 }
 
 size_t tomway::SimulationSystem::get_cell_count() const
@@ -35,11 +36,13 @@ size_t tomway::SimulationSystem::get_cell_count() const
 
 tomway::CellContainer const* tomway::SimulationSystem::get_current_cells() const
 {
+    ZoneScoped;
     return &_cells[_index];
 }
 
 std::string tomway::SimulationSystem::serialize() const
 {
+    ZoneScoped;
     rapidjson::Document document;
     rapidjson::Value cell_array;
     cell_array.SetArray();
@@ -60,6 +63,7 @@ std::string tomway::SimulationSystem::serialize() const
 
 void tomway::SimulationSystem::start(size_t const grid_size)
 {
+    ZoneScoped;
     _grid_size = grid_size;
     _cells[0] = { _grid_size };
     _cells[0].randomize();
@@ -69,6 +73,7 @@ void tomway::SimulationSystem::start(size_t const grid_size)
 
 void tomway::SimulationSystem::step_simulation()
 {
+    ZoneScoped;
     unsigned int const new_index = (_index + 1) % 2;
     
     for (Cell& cell : _cells[_index])
