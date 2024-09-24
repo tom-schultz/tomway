@@ -1,5 +1,7 @@
 #include "CellGeometry.h"
 
+#include "Tracy.hpp"
+
 std::vector<tomway::Vertex> const tomway::CellGeometry::BASE_VERTS = {
     // X, Y, CELL_WIDTH (Top)
     {{0.0f, 0.0f, CELL_HEIGHT}, {0.0f, 0.0f, 1.0f}, COLOR_RED},
@@ -64,6 +66,7 @@ void tomway::CellGeometry::bind_cells(CellContainer const* cells)
 
 std::vector<tomway::Vertex> const& tomway::CellGeometry::get_vertices()
 {
+    ZoneScoped;
     if (_cells->size() == 0)
     {
         _vertices.resize(0);

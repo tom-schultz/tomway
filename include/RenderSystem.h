@@ -11,6 +11,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "CellGeometry.h"
+#include "TracyVulkan.hpp"
 #include "Transform.h"
 #include "Vertex.h"
 #include "WindowSystem.h"
@@ -95,6 +96,7 @@ namespace tomway {
 		std::vector<const char*> _validation_layers = { VALIDATION_LAYERS };
 		size_t _max_vertex_count;
 		size_t _vertex_buffer_size;
+		std::vector<TracyVkCtx> _tracy_contexts;
 		bool _window_minimized;
 		WindowSystem& _window_system;
 

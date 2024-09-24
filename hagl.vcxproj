@@ -76,7 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\vendor\nfd\include;$(ProjectDir)\vendor\rapidjson;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\vendor\sdl\include;$(ProjectDir)\vendor\IMGUI\include;$(ProjectDir)\vendor\soloud\include;$(ProjectDir)\vendor\nfd\include;$(ProjectDir)\vendor\tracy\tracy;$(ProjectDir)\vendor\rapidjson;$(ProjectDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>

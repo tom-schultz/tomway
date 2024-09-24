@@ -62,6 +62,8 @@ Global
 		{655E4468-B119-4991-914A-BED652C2BCA0}.Release|x64.Build.0 = Release|x64
 		{50A93E35-E126-4880-ABFA-434A59B18D4F}.Perf|x64.ActiveCfg = Perf|x64
 		{50A93E35-E126-4880-ABFA-434A59B18D4F}.Perf|x64.Build.0 = Perf|x64
+		{50A93E35-E126-4880-ABFA-434A59B18D4F}.Debug|x64.ActiveCfg = Debug|x64
+		{50A93E35-E126-4880-ABFA-434A59B18D4F}.Debug|x64.Build.0 = Debug|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

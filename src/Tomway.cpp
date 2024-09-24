@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
 	uint32_t width, height;
 	bool step = false;
 	bool locked = true;
-	
+
 #ifdef PERF
 	bool main_menu = false;
 	std::ifstream save_file;
