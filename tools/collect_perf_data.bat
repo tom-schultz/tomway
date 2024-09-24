@@ -3,4 +3,4 @@ start /B /D ..\x64\Perf ..\x64\Perf\hagl.exe
 timeout /t 2 /nobreak
 tracy-capture.exe -a 127.0.0.1 -s 10 -o tomway-%timestamp%.tracy
 taskkill /im hagl.exe
-tracy-csvexport.exe tomway-%timestamp%.tracy > tomway-%timestamp.csv
+tracy-csvexport.exe tomway-%timestamp%.tracy > tomway-%timestamp%.csv
