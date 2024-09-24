@@ -9,6 +9,8 @@
 #include "RenderSystem.h"
 
 #include "imgui_impl_vulkan.h"
+#include "Tracy.hpp"
+#include "../vendor/tracy/client/TracyScoped.hpp"
 
 static void check_vk_result(VkResult err)
 {
@@ -591,56 +593,78 @@ void tomway::RenderSystem::create_vk_instance() {
 
 void tomway::RenderSystem::draw_frame(Transform const& transform)
 {
+	ZoneScoped;
 	if (_window_minimized) {
+		ZoneScopedN("draw_frame: minimized wait");
 		_window_system.wait_while_minimized();
 		_window_minimized = false;
 	}
-	
-	auto const vertices = _cell_geometry.get_vertices();
-	_max_vertex_count = vertices.size();
-	transfer_vertices(vertices);
-	_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
 
+	{
+		ZoneScopedN("Vertex transfer");
+		auto const& vertices = _cell_geometry.get_vertices();
+		_max_vertex_count = _cell_geometry.get_vertex_count();
+		transfer_vertices(vertices);
+	}
+
+	{
+		ZoneScopedN("Fence wait");
+		_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
+	}
+	
 	vk::Result result;
 	uint32_t imageIndex;
 
-	// TODO - figure out how to make this faster when in FIFO mode due to integrated graphics or whatever
-	// https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
-	std::tie(result, imageIndex) = _device_u->acquireNextImageKHR(
-		*_swapchain_u,
-		UINT64_MAX,
-		*_image_available_sems_u[_curr_frame],
-		nullptr);
+	{
+		ZoneScopedN("Image acquisition");
+		// TODO - figure out how to make this faster when in FIFO mode due to integrated graphics or whatever
+		// https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
+		std::tie(result, imageIndex) = _device_u->acquireNextImageKHR(
+			*_swapchain_u,
+			UINT64_MAX,
+			*_image_available_sems_u[_curr_frame],
+			nullptr);
 
-	if (result == vk::Result::eErrorOutOfDateKHR) {
-		recreate_swapchain();
-		return;
+		if (result == vk::Result::eErrorOutOfDateKHR) {
+			recreate_swapchain();
+			return;
+		}
 	}
 
-	_device_u->resetFences(*_in_flight_fences_u[_curr_frame]);
-	_command_buffers_u[_curr_frame]->reset();
+	{
+		ZoneScopedN("Fence and command buffer reset");
+		_device_u->resetFences(*_in_flight_fences_u[_curr_frame]);
+		_command_buffers_u[_curr_frame]->reset();
+	}
+	
 	update_uniform_buffer(transform);
 	record_command_buffer(*_command_buffers_u[_curr_frame], imageIndex);
-	vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-
-	vk::SubmitInfo submitInfo({
-		*_image_available_sems_u[_curr_frame],
-		waitDstStage,
-		*_command_buffers_u[_curr_frame],
-		*_render_finished_sems_u[_curr_frame]});
-
-	_graphics_queue.submit(submitInfo, *_in_flight_fences_u[_curr_frame]);
-
-	vk::PresentInfoKHR presentInfo({
-		*_render_finished_sems_u[_curr_frame],
-		*_swapchain_u,
-		imageIndex });
-
-	try
+	
 	{
-		result = _present_queue.presentKHR(presentInfo);
-	} catch (vk::OutOfDateKHRError) {
-		recreate_swapchain();
+		ZoneScopedN("VkSubmit");
+		vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
+		vk::SubmitInfo submitInfo({
+			*_image_available_sems_u[_curr_frame],
+			waitDstStage,
+			*_command_buffers_u[_curr_frame],
+			*_render_finished_sems_u[_curr_frame]});
+
+		_graphics_queue.submit(submitInfo, *_in_flight_fences_u[_curr_frame]);
+	}
+	{
+		ZoneScopedN("VkPresent");
+		vk::PresentInfoKHR presentInfo({
+			*_render_finished_sems_u[_curr_frame],
+			*_swapchain_u,
+			imageIndex });
+
+		try
+		{
+			result = _present_queue.presentKHR(presentInfo);
+		} catch (vk::OutOfDateKHRError) {
+			recreate_swapchain();
+		}
 	}
 
 	if (result == vk::Result::eSuboptimalKHR || _framebuffer_resized) {
@@ -696,10 +720,12 @@ void tomway::RenderSystem::pick_physical_device() {
 }
 
 void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buffer, uint32_t image_index) {
+	ZoneScoped;
+	
 	vk::CommandBufferBeginInfo beginInfo;
 	command_buffer.begin(beginInfo);
 	// I'm not sure this belongs in *this* function, but this is functionally where it should happen
-	copy_buffer(*_command_buffers_u[_curr_frame], *_staging_buffer_u, *_vertex_buffer_u, _vertex_buffer_size);
+	copy_buffer(*_command_buffers_u[_curr_frame], *_staging_buffer_u, *_vertex_buffer_u, _max_vertex_count * sizeof(Vertex));
 
 	constexpr vk::ClearColorValue clear_color_value = vk::ClearColorValue { 0.0f, 0.0f, 0.0f, 1.0f };
 	constexpr vk::ClearDepthStencilValue clear_depth_value = vk::ClearDepthStencilValue { 1.0f, 0 };
@@ -750,6 +776,7 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 }
 
 void tomway::RenderSystem::recreate_swapchain() {
+	ZoneScoped;
 	LOG_INFO("Resizing framebuffer!");
 	_window_system.wait_while_minimized(); // Probably unnecessary, but it's safe
 	_framebuffer_resized = false;
@@ -771,11 +798,14 @@ inline void tomway::RenderSystem::resize_framebuffer() {
 
 // TODO - use a different queue family for transfer operations
 // https://docs.vulkan.org/tutorial/latest/00_Introduction.html
-void tomway::RenderSystem::transfer_vertices(const std::vector<Vertex>& vertices) {
-	memcpy(_staging_buffer_mapped, vertices.data(), vertices.size() * sizeof(Vertex));
+void tomway::RenderSystem::transfer_vertices(Vertex const* vertices) const
+{
+	ZoneScoped;
+	memcpy(_staging_buffer_mapped, vertices, _max_vertex_count * sizeof(Vertex));
 }
 
 void tomway::RenderSystem::update_uniform_buffer(Transform transform) {
+	ZoneScoped;
 	transform.projection[1][1] *= -1;
 	memcpy(_uniform_buffers_mapped[_curr_frame], &transform, sizeof(transform));
 }

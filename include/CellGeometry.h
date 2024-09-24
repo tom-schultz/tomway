@@ -9,7 +9,7 @@ namespace tomway
     public:
         CellGeometry(CellContainer const* cells);
         void bind_cells(CellContainer const* cells);
-        std::vector<Vertex> const& get_vertices();
+        Vertex const* get_vertices();
         size_t get_vertex_count() const;
         static size_t max_vertex_count(size_t max_cells);
     private:
@@ -27,5 +27,6 @@ namespace tomway
         static glm::vec3 constexpr COLOR_DB = {0, 0, 0.025f}; 
         CellContainer const* _cells;
 		std::vector<Vertex> _vertices;
+        size_t _vertex_count = 0;
     };
 }

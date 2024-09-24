@@ -1,5 +1,7 @@
 #include "CellGeometry.h"
 
+#include "Tracy.hpp"
+
 std::vector<tomway::Vertex> const tomway::CellGeometry::BASE_VERTS = {
     // X, Y, CELL_WIDTH (Top)
     {{0.0f, 0.0f, CELL_HEIGHT}, {0.0f, 0.0f, 1.0f}, COLOR_RED},
@@ -58,19 +60,20 @@ tomway::CellGeometry::CellGeometry(CellContainer const* cells)
 
 void tomway::CellGeometry::bind_cells(CellContainer const* cells)
 {
+    ZoneScoped;
     _cells = cells;
 	_vertices.reserve(cells->size() * BASE_VERTS.size() + BACKGROUND_VERT_COUNT);
 }
 
-std::vector<tomway::Vertex> const& tomway::CellGeometry::get_vertices()
+tomway::Vertex const* tomway::CellGeometry::get_vertices()
 {
+    ZoneScoped;
     if (_cells->size() == 0)
     {
-        _vertices.resize(0);
-        return _vertices;
+        _vertex_count = 0;
+        return _vertices.data();
     }
     
-    _vertices.resize(_vertices.capacity());
     size_t verts_acquired = BACKGROUND_VERT_COUNT;
 
     // UL
@@ -109,31 +112,36 @@ std::vector<tomway::Vertex> const& tomway::CellGeometry::get_vertices()
     _vertices[5].normal = {0.0f, 0.0f, 1.0f};
     _vertices[5].color = COLOR_DB;
 
+    {
+        ZoneScopedN("Iterating cells");
     for (Cell const& cell : *_cells)
     {
         if (not cell._alive) continue;
         
         auto const adjusted_cell_pos_x = (static_cast<float>(cell._x) - _cells->grid_size() / 2.0f) * CELL_POS_OFFSET;
         auto const adjusted_cell_pos_y = (static_cast<float>(cell._y) - _cells->grid_size() / 2.0f) * CELL_POS_OFFSET;
-        
-        for (auto const vertex : BASE_VERTS)
+
+        for (auto const& vertex : BASE_VERTS)
         {
-            _vertices[verts_acquired].pos.x = vertex.pos.x + adjusted_cell_pos_x;
-            _vertices[verts_acquired].pos.y = vertex.pos.y + adjusted_cell_pos_y;
-            _vertices[verts_acquired].pos.z = vertex.pos.z;
-            _vertices[verts_acquired].normal = vertex.normal;
-            _vertices[verts_acquired].color = vertex.color;
+            auto& vert = _vertices[verts_acquired];
+            vert.pos.x = vertex.pos.x + adjusted_cell_pos_x;
+            vert.pos.y = vertex.pos.y + adjusted_cell_pos_y;
+            vert.pos.z = vertex.pos.z;
+            vert.normal = vertex.normal;
+            vert.color = vertex.color;
             verts_acquired += 1;
         }
     }
     
     _vertices.resize(verts_acquired);
-    return _vertices;
+    _vertex_count = verts_acquired;
+    }
+    return _vertices.data();
 }
 
 size_t tomway::CellGeometry::get_vertex_count() const
 {
-    return _vertices.size();
+    return _vertex_count;
 }
 
 size_t tomway::CellGeometry::max_vertex_count(size_t max_cells)

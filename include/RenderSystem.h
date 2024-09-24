@@ -130,7 +130,7 @@ namespace tomway {
 		void pick_physical_device();
 		void record_command_buffer(vk::CommandBuffer& command_buffer, uint32_t image_index);
 		void recreate_swapchain();
-		void transfer_vertices(const std::vector<Vertex>& vertices);
+		void transfer_vertices(Vertex const* vertices) const;
 		void update_uniform_buffer(Transform transform);
 	};
 
