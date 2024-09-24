@@ -603,25 +603,28 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 {
 	ZoneScoped;
 	if (_window_minimized) {
+		ZoneScopedN("draw_frame: minimized wait");
 		_window_system.wait_while_minimized();
 		_window_minimized = false;
 	}
+
 	{
-		ZoneScopedN("Vertex generation and transfer");
-		auto const vertices = _cell_geometry.get_vertices();
-		_max_vertex_count = vertices.size();
+		ZoneScopedN("Vertex transfer");
+		auto const& vertices = _cell_geometry.get_vertices();
+		_max_vertex_count = _cell_geometry.get_vertex_count();
 		transfer_vertices(vertices);
 	}
 
 	{
-		ZoneScopedN("Wait for fences");
+		ZoneScopedN("Fence wait");
 		_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
 	}
+	
 	vk::Result result;
 	uint32_t imageIndex;
 
 	{
-		ZoneScopedN("Acquire image");
+		ZoneScopedN("Image acquisition");
 		
 		// TODO - figure out how to make this faster when in FIFO mode due to integrated graphics or whatever
 		// https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
@@ -637,8 +640,12 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 		}
 	}
 
-	_device_u->resetFences(*_in_flight_fences_u[_curr_frame]);
-	_command_buffers_u[_curr_frame]->reset();
+	{
+		ZoneScopedN("Fence and command buffer reset");
+		_device_u->resetFences(*_in_flight_fences_u[_curr_frame]);
+		_command_buffers_u[_curr_frame]->reset();
+	}
+	
 	update_uniform_buffer(transform);
 	record_command_buffer(*_command_buffers_u[_curr_frame], imageIndex);
 	vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -729,7 +736,7 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 	vk::CommandBufferBeginInfo beginInfo;
 	command_buffer.begin(beginInfo);
 	// I'm not sure this belongs in *this* function, but this is functionally where it should happen
-	copy_buffer(*_command_buffers_u[_curr_frame], *_staging_buffer_u, *_vertex_buffer_u, _vertex_buffer_size);
+	copy_buffer(*_command_buffers_u[_curr_frame], *_staging_buffer_u, *_vertex_buffer_u, _max_vertex_count * sizeof(Vertex));
 
 	constexpr vk::ClearColorValue clear_color_value = vk::ClearColorValue { 0.0f, 0.0f, 0.0f, 1.0f };
 	constexpr vk::ClearDepthStencilValue clear_depth_value = vk::ClearDepthStencilValue { 1.0f, 0 };
@@ -808,9 +815,10 @@ inline void tomway::RenderSystem::resize_framebuffer() {
 
 // TODO - use a different queue family for transfer operations
 // https://docs.vulkan.org/tutorial/latest/00_Introduction.html
-void tomway::RenderSystem::transfer_vertices(const std::vector<Vertex>& vertices) {
+void tomway::RenderSystem::transfer_vertices(Vertex const* vertices) const
+{
 	ZoneScoped;
-	memcpy(_staging_buffer_mapped, vertices.data(), vertices.size() * sizeof(Vertex));
+	memcpy(_staging_buffer_mapped, vertices, _max_vertex_count * sizeof(Vertex));
 }
 
 void tomway::RenderSystem::update_uniform_buffer(Transform transform) {
