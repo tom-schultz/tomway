@@ -11,6 +11,7 @@ namespace tomway
         void bind_cells(CellContainer const* cells);
         Vertex const* get_vertices();
         size_t get_vertex_count() const;
+        bool is_dirty() const;
         static size_t max_vertex_count(size_t max_cells);
     private:
         static float constexpr BACKGROUND_VERT_COLOR = 0.025f;
@@ -26,7 +27,8 @@ namespace tomway
         static glm::vec3 constexpr COLOR_LB = {0, 0, 0.085f}; 
         static glm::vec3 constexpr COLOR_DB = {0, 0, 0.025f}; 
         CellContainer const* _cells;
-		std::vector<Vertex> _vertices;
+        bool _cells_dirty = true;
+        std::vector<Vertex> _vertices;
         size_t _vertex_count = 0;
     };
 }

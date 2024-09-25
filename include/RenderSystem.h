@@ -77,6 +77,7 @@ namespace tomway {
 		########  STRICT ORDERING SECTION END
 		*/
 
+		bool _cell_buffer_dirty = true;
 		CellGeometry& _cell_geometry;
 		unsigned _curr_frame;
 		std::vector<vk::DescriptorSet> _descriptor_sets;

@@ -108,6 +108,7 @@ void tomway::copy_buffer(
 	const vk::Buffer& dst,
 	vk::DeviceSize const size)
 {
+	if (not size) return;
 	vk::BufferCopy const copy_region(0, 0, size); // srcOffset, dstOffset, size
 	command_buffer.copyBuffer(src, dst, copy_region);
 }
@@ -132,7 +133,7 @@ void tomway::RenderSystem::create_buffer(
 	vk::MemoryAllocateInfo const allocate_info(
 		mem_requirements.size,
 		find_memory_type(mem_requirements.memoryTypeBits, memory_property_flags));
-
+	
 	buffer_memory_u = _device_u->allocateMemoryUnique(allocate_info);
 	_device_u->bindBufferMemory(*buffer_u, *buffer_memory_u, 0);
 }
@@ -554,6 +555,14 @@ void tomway::RenderSystem::create_uniform_buffers() {
 }
 
 void tomway::RenderSystem::create_vertex_buffers() {
+	VkPhysicalDeviceMaintenance3Properties props3;
+	props3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES;
+	props3.pNext = NULL;
+	VkPhysicalDeviceProperties2 props2;
+	props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	props2.pNext = &props3;
+	
+	vkGetPhysicalDeviceProperties2(_physical_device, &props2);
 	create_buffer(
 		_vertex_buffer_size,
 		vk::BufferUsageFlagBits::eTransferSrc,
@@ -603,20 +612,21 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 {
 	ZoneScoped;
 	if (_window_minimized) {
-		ZoneScopedN("draw_frame: minimized wait");
+		ZoneScopedN("tomway::RenderSystem::draw_frame | minimized wait");
 		_window_system.wait_while_minimized();
 		_window_minimized = false;
 	}
 
-	{
-		ZoneScopedN("Vertex transfer");
+	if (_cell_geometry.is_dirty()) {
+		ZoneScopedN("tomway::RenderSystem::draw_frame | Vertex transfer");
 		auto const& vertices = _cell_geometry.get_vertices();
 		_max_vertex_count = _cell_geometry.get_vertex_count();
 		transfer_vertices(vertices);
+		_cell_buffer_dirty = true;
 	}
 
 	{
-		ZoneScopedN("Fence wait");
+		ZoneScopedN("tomway::RenderSystem::draw_frame | Fence wait");
 		_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
 	}
 	
@@ -624,7 +634,7 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 	uint32_t imageIndex;
 
 	{
-		ZoneScopedN("Image acquisition");
+		ZoneScopedN("tomway::RenderSystem::draw_frame | Image acquisition");
 		
 		// TODO - figure out how to make this faster when in FIFO mode due to integrated graphics or whatever
 		// https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
@@ -641,7 +651,7 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 	}
 
 	{
-		ZoneScopedN("Fence and command buffer reset");
+		ZoneScopedN("tomway::RenderSystem::draw_frame | Fence and command buffer reset");
 		_device_u->resetFences(*_in_flight_fences_u[_curr_frame]);
 		_command_buffers_u[_curr_frame]->reset();
 	}
@@ -651,7 +661,7 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 	vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
 	{
-		ZoneScopedN("Submit");
+		ZoneScopedN("tomway::RenderSystem::draw_frame | Submit");
 		
 		vk::SubmitInfo submitInfo({
 			*_image_available_sems_u[_curr_frame],
@@ -663,7 +673,7 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 	}
 
 	{
-		ZoneScopedN("Present");
+		ZoneScopedN("tomway::RenderSystem::draw_frame | Present");
 		
 		vk::PresentInfoKHR presentInfo({
 			*_render_finished_sems_u[_curr_frame],
@@ -735,8 +745,18 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 	ZoneScoped;
 	vk::CommandBufferBeginInfo beginInfo;
 	command_buffer.begin(beginInfo);
-	// I'm not sure this belongs in *this* function, but this is functionally where it should happen
-	copy_buffer(*_command_buffers_u[_curr_frame], *_staging_buffer_u, *_vertex_buffer_u, _max_vertex_count * sizeof(Vertex));
+
+	if (_cell_buffer_dirty)
+	{
+		// I'm not sure this belongs in *this* function, but this is functionally where it should happen
+		copy_buffer(
+			*_command_buffers_u[_curr_frame],
+			*_staging_buffer_u,
+			*_vertex_buffer_u,
+			_max_vertex_count * sizeof(Vertex));
+
+		_cell_buffer_dirty = false;
+	}
 
 	constexpr vk::ClearColorValue clear_color_value = vk::ClearColorValue { 0.0f, 0.0f, 0.0f, 1.0f };
 	constexpr vk::ClearDepthStencilValue clear_depth_value = vk::ClearDepthStencilValue { 1.0f, 0 };

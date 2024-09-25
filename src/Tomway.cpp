@@ -33,8 +33,8 @@ int main(int argc, char* argv[])
 	tomway::AudioSystem audio_system;
 	tomway::InputSystem input_system;
 	tomway::TimeSystem time_system(5);
-	tomway::CameraController camera_controller({0.0f, 0.0f, GRID_SIZE}, 90.0f, 0.0f);
-	
+	tomway::CameraController camera_controller({0.0f, 0.0f, GRID_SIZE > 1000.0f ? 1000.0f : GRID_SIZE}, 90.0f, 0.0f);
+
 	tomway::RenderSystem render_system(
 		window_system,
 		cell_geometry_generator,
@@ -53,6 +53,8 @@ int main(int argc, char* argv[])
 	save_file >> data;
 	save_file.close();
 	simulation_system.deserialize(data);
+	auto cells = simulation_system.get_current_cells();
+	cell_geometry_generator.bind_cells(cells);
 #else
 	bool main_menu = true;
 #endif
@@ -65,7 +67,7 @@ int main(int argc, char* argv[])
 	auto iteration_audio = tomway::AudioSystem::load_file("assets/audio/bong_001.ogg");
 	
 	while (true) {
-		ZoneScoped;
+		ZoneScopedN("SDL_main | game loop");
 		auto input_events = window_system.handle_events();
 		render_system.new_frame();
 		window_system.get_vulkan_framebuffer_size(width, height);
@@ -122,6 +124,8 @@ int main(int argc, char* argv[])
 			if (not main_menu)
 			{
 				simulation_system.start(GRID_SIZE);
+				auto cells = simulation_system.get_current_cells();
+				cell_geometry_generator.bind_cells(cells);
 				tomway::AudioSystem::play(button_audio, tomway::ChannelGroup::SFX, 0.2f);
 				window_system.set_mouse_visible(false);
 			}
@@ -136,6 +140,8 @@ int main(int argc, char* argv[])
 			if ((!locked && time_system.get_new_tick()) || step)
 			{
 				simulation_system.step_simulation();
+				auto cells = simulation_system.get_current_cells();
+				cell_geometry_generator.bind_cells(cells);
 				step = false;
 				float iteration_vol = max(0.03f, tomway::AudioSystem::get_volume(music_channel) / 2);
 				tomway::AudioSystem::play(iteration_audio, tomway::ChannelGroup::SFX, iteration_vol);
@@ -147,8 +153,6 @@ int main(int argc, char* argv[])
 		transform.view = camera_controller.get_view_transform();
 		transform.projection = camera_controller.get_projection_transform(width, height);
 		
-		auto cells = simulation_system.get_current_cells();
-		cell_geometry_generator.bind_cells(cells);
 		render_system.draw_frame(transform);
 		FrameMark;
 	}
