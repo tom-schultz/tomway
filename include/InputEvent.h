@@ -17,6 +17,7 @@ namespace tomway {
 		S,
 		D,
 		L,
+		P,
 		R,
 		ESCAPE,
 		MOUSE_LEFT,

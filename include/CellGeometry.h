@@ -1,18 +1,17 @@
 #pragma once
 #include "simulation/CellContainer.h"
 #include "Vertex.h"
+#include "render/VertexChunk.h"
 
 namespace tomway
 {
     class CellGeometry
     {
     public:
-        CellGeometry(CellContainer const* cells);
+        CellGeometry();
         void bind_cells(CellContainer const* cells);
-        Vertex const* get_vertices();
-        size_t get_vertex_count() const;
+        std::vector<VertexChunk> get_vertices(size_t max_chunk_alloc_size_bytes);
         bool is_dirty() const;
-        static size_t max_vertex_count(size_t max_cells);
     private:
         static float constexpr BACKGROUND_VERT_COLOR = 0.025f;
         static unsigned int constexpr BACKGROUND_VERT_COUNT = 6;
@@ -28,7 +27,7 @@ namespace tomway
         static glm::vec3 constexpr COLOR_DB = {0, 0, 0.025f}; 
         CellContainer const* _cells;
         bool _cells_dirty = true;
+        std::vector<VertexChunk> _chunks;
         std::vector<Vertex> _vertices;
-        size_t _vertex_count = 0;
     };
 }

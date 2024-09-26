@@ -32,7 +32,7 @@ namespace tomway {
 
 	class RenderSystem {
 	public:
-		RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, size_t max_vertex_count, unsigned max_frames_in_flight = 2);
+		RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, unsigned max_frames_in_flight = 2);
 		~RenderSystem();
 
 		void draw_frame(Transform const& transform);
@@ -64,10 +64,10 @@ namespace tomway {
 		std::vector<vk::UniqueSemaphore> _image_available_sems_u;
 		std::vector<vk::UniqueSemaphore> _render_finished_sems_u;
 		std::vector<vk::UniqueFence> _in_flight_fences_u;
-		vk::UniqueBuffer _staging_buffer_u;
-		vk::UniqueDeviceMemory _staging_buffer_memory_u;
-		vk::UniqueBuffer _vertex_buffer_u;
-		vk::UniqueDeviceMemory _vertex_buffer_memory_u;
+		std::vector<vk::UniqueBuffer> _vertex_staging_buffers_u;
+		std::vector<vk::UniqueDeviceMemory> _vertex_staging_buffers_memory_u;
+		std::vector<vk::UniqueBuffer> _vertex_buffers_u;
+		std::vector<vk::UniqueDeviceMemory> _vertex_buffers_memory_u;
 		std::vector<vk::UniqueBuffer> _uniform_buffers_u;
 		std::vector<vk::UniqueDeviceMemory> _uniform_buffers_memory_u;
 		vk::UniqueDescriptorPool _descriptor_pool_main_u;
@@ -86,17 +86,17 @@ namespace tomway {
 		std::vector<vk::Image> _images;
 		unsigned _max_frames_in_flight;
 		vk::SampleCountFlagBits _msaa_samples = vk::SampleCountFlagBits::e1;
+		size_t _max_mem_allocation_size;
 		vk::PhysicalDevice _physical_device;
 		vk::Queue _present_queue;
 		QueueFamilyIndices _queue_indices;
 		std::vector<const char*> _required_device_extensions = { vk::KHRSwapchainExtensionName };
-		void* _staging_buffer_mapped;
+		std::vector<void*> _vertex_staging_memory;
 		vk::Extent2D _swapchain_extent;
 		vk::Format _swapchain_format;
 		std::vector<void*> _uniform_buffers_mapped;
 		std::vector<const char*> _validation_layers = { VALIDATION_LAYERS };
-		size_t _max_vertex_count;
-		size_t _vertex_buffer_size;
+		std::vector<VertexChunk> _vertex_chunks;
 		std::vector<TracyVkCtx> _tracy_contexts;
 		bool _window_minimized;
 		WindowSystem& _window_system;
@@ -127,16 +127,15 @@ namespace tomway {
 		void create_swapchain();
 		void create_sync_objects();
 		void create_uniform_buffers();
-		void create_vertex_buffers();
+		void create_vertex_buffers(std::vector<VertexChunk> const& chunks);
 		void create_vk_instance();
 		uint32_t find_memory_type(uint32_t type_filter, vk::MemoryPropertyFlags properties);
 		void pick_physical_device();
 		void record_command_buffer(vk::CommandBuffer& command_buffer, uint32_t image_index);
 		void recreate_swapchain();
-		void transfer_vertices(Vertex const* vertices) const;
+		void transfer_vertices(std::vector<VertexChunk> const& vertex_chunks) const;
 		void update_uniform_buffer(Transform transform);
 	};
-
 
 	static void copy_buffer(const vk::CommandBuffer& command_buffer, const vk::Buffer& src, const vk::Buffer& dst, vk::DeviceSize size);
 	static bool check_device_extension_support(const vk::PhysicalDevice& device, std::vector<const char*> required_device_extensions);
@@ -148,9 +147,11 @@ namespace tomway {
 	static vk::UniqueRenderPass create_render_pass(const vk::PhysicalDevice& physical_device, const vk::Device& device, const vk::Format& format, vk::SampleCountFlagBits samples);
 	static vk::UniqueShaderModule create_shader_module(const vk::Device& device, const std::vector<char>& bytes);
 	static vk::Format find_depth_format(const vk::PhysicalDevice& physical_device);
-	static QueueFamilyIndices find_queue_families(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface);
+	static QueueFamilyIndices find_queue_families(const vk::PhysicalDevice& physical_device, const vk::SurfaceKHR& surface);
+	static size_t get_max_memory_allocation(const vk::PhysicalDevice& physical_device);
 	static vk::SampleCountFlagBits get_max_usable_sample_count(const vk::PhysicalDevice& physical_device);
 	static bool is_device_suitable(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface, const std::vector<const char*>& required_device_extensions);
 	static bool is_queue_family_complete(const QueueFamilyIndices& device_indices);
 	static std::vector<char> read_shader_bytes(const std::string& file_path);
+	static inline bool need_bigger_chunk_alloc(std::vector<VertexChunk> const& lhs, std::vector<VertexChunk> const& new_chunks);
 }

@@ -52,10 +52,9 @@ std::vector<tomway::Vertex> const tomway::CellGeometry::BASE_VERTS = {
     {{CELL_WIDTH, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, COLOR_RED},
 };
 
-tomway::CellGeometry::CellGeometry(CellContainer const* cells)
-    : _cells(cells)
+tomway::CellGeometry::CellGeometry()
+    : _cells(nullptr)
 {
-	_vertices.resize(cells->size() * BASE_VERTS.size() + BACKGROUND_VERT_COUNT);
 }
 
 void tomway::CellGeometry::bind_cells(CellContainer const* cells)
@@ -66,23 +65,32 @@ void tomway::CellGeometry::bind_cells(CellContainer const* cells)
     _cells_dirty = true;
 }
 
-tomway::Vertex const* tomway::CellGeometry::get_vertices()
+std::vector<VertexChunk> tomway::CellGeometry::get_vertices(size_t max_chunk_alloc_size_bytes)
 {
     ZoneScoped;
     
-    if (_cells->size() == 0)
+    if (_cells == nullptr or _cells->size() == 0)
     {
-        _vertex_count = 0;
         _cells_dirty = false;
-        return _vertices.data();
+        return {};
     }
 
     if (not _cells_dirty)
     {
-        return _vertices.data();
+        return _chunks;
     }
+
+    // Start with the max allowed per memory allocation
+    size_t verts_per_chunk = max_chunk_alloc_size_bytes / sizeof(Vertex);
+    // Get rid of the remainder through integer division, then multiply up
+    verts_per_chunk = verts_per_chunk / BASE_VERTS.size() * BASE_VERTS.size();
+    size_t const max_verts_in_container = _cells->size() * BASE_VERTS.size();
+    // If the maximum possible verts in our cell container is less than that, use that number instead
+    verts_per_chunk = verts_per_chunk > max_verts_in_container ? max_verts_in_container : verts_per_chunk;
     
     size_t verts_acquired = BACKGROUND_VERT_COUNT;
+    size_t verts_curr_chunk = BACKGROUND_VERT_COUNT;
+    _chunks.clear();
 
     // UL
     _vertices[0].pos.x = -1.0f * _cells->grid_size() / 2.0f * CELL_POS_OFFSET;
@@ -138,27 +146,37 @@ tomway::Vertex const* tomway::CellGeometry::get_vertices()
                 vert.normal = base_vert.normal;
                 vert.color = base_vert.color;
                 verts_acquired += 1;
+                verts_curr_chunk += 1;
+            }
+
+            if (verts_curr_chunk >= verts_per_chunk)
+            {
+                _chunks.push_back({
+                    _vertices.data() + verts_acquired - verts_per_chunk,
+                    verts_curr_chunk,
+                    verts_curr_chunk * sizeof(Vertex),
+                    verts_per_chunk * sizeof(Vertex)});
+                    
+                verts_curr_chunk = 0;
             }
         }
+
+        if (verts_curr_chunk)
+        {
+            _chunks.push_back({
+                _vertices.data() + verts_acquired - verts_curr_chunk,
+                verts_curr_chunk,
+                verts_curr_chunk * sizeof(Vertex),
+                verts_per_chunk * sizeof(Vertex)});
+        }
         
-        _vertex_count = verts_acquired;
         _cells_dirty = false;
     }
     
-    return _vertices.data();
-}
-
-size_t tomway::CellGeometry::get_vertex_count() const
-{
-    return _vertex_count;
+    return _chunks;
 }
 
 bool tomway::CellGeometry::is_dirty() const
 {
     return _cells_dirty;
-}
-
-size_t tomway::CellGeometry::max_vertex_count(size_t max_cells)
-{
-    return max_cells * BASE_VERTS.size();
 }

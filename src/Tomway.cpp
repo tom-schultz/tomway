@@ -23,22 +23,21 @@
 #include "audio/AudioSystem.h"
 #include "input/InputSystem.h"
 
-size_t constexpr GRID_SIZE = 600;
+size_t constexpr GRID_SIZE = 1000;
 
 int main(int argc, char* argv[])
 {
 	tomway::SimulationSystem simulation_system;	
-	tomway::CellGeometry cell_geometry_generator(simulation_system.get_current_cells());
+	tomway::CellGeometry cell_geometry_generator;
 	tomway::WindowSystem window_system(1024, 768);
 	tomway::AudioSystem audio_system;
 	tomway::InputSystem input_system;
 	tomway::TimeSystem time_system(5);
-	tomway::CameraController camera_controller({0.0f, 0.0f, GRID_SIZE > 1000.0f ? 1000.0f : GRID_SIZE}, 90.0f, 0.0f);
+	tomway::CameraController camera_controller({0.0f, 0.0f, GRID_SIZE >= 1000.0f ? 990.0f : GRID_SIZE}, 90.0f, 0.0f);
 
 	tomway::RenderSystem render_system(
 		window_system,
-		cell_geometry_generator,
-		tomway::CellGeometry::max_vertex_count(GRID_SIZE * GRID_SIZE));
+		cell_geometry_generator);
 
 	float delta = 0;
 	uint32_t width, height;
@@ -53,8 +52,7 @@ int main(int argc, char* argv[])
 	save_file >> data;
 	save_file.close();
 	simulation_system.deserialize(data);
-	auto cells = simulation_system.get_current_cells();
-	cell_geometry_generator.bind_cells(cells);
+	cell_geometry_generator.bind_cells(simulation_system.get_current_cells());
 #else
 	bool main_menu = true;
 #endif
@@ -116,7 +114,7 @@ int main(int argc, char* argv[])
 			window_system.set_mouse_visible(false);
 			camera_controller.reset();
 		}
-
+		
 		if (main_menu)
 		{
 			tomway::draw_main_menu(&main_menu);
@@ -132,6 +130,13 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
+			if (tomway::InputSystem::btn_just_up(tomway::InputButton::P))
+			{
+				simulation_system.start(2500);
+				auto const cells = simulation_system.get_current_cells();
+				cell_geometry_generator.bind_cells(cells);
+			}
+			
 			if (not window_system.get_mouse_visible())
 			{
 				camera_controller.update(delta);

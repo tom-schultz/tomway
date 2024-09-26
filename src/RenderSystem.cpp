@@ -20,14 +20,12 @@ static void check_vk_result(VkResult err)
 		abort();
 }
 
-tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, size_t max_vertex_count, unsigned max_frames_in_flight)
+tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, unsigned max_frames_in_flight)
 	: _cell_geometry(cell_geometry),
 	  _curr_frame(0),
 	  _max_frames_in_flight(max_frames_in_flight),
 	  _queue_indices(),
 	  _swapchain_format(),
-	  _max_vertex_count(max_vertex_count),
-	  _vertex_buffer_size(_max_vertex_count * sizeof(Vertex)),
 	  _window_system(window_system)
 {
 	try {
@@ -46,7 +44,6 @@ tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& ce
 		create_framebuffers();
 		create_command_buffer();
 		create_sync_objects();
-		create_vertex_buffers();
 		create_uniform_buffers();
 		create_descriptor_pools();
 		create_descriptor_sets();
@@ -534,53 +531,58 @@ void tomway::RenderSystem::create_sync_objects() {
 }
 
 void tomway::RenderSystem::create_uniform_buffers() {
-	vk::DeviceSize bufferSize = sizeof(Transform);
+	vk::DeviceSize constexpr buffer_size = sizeof(Transform);
 	_uniform_buffers_u.resize(_max_frames_in_flight);
 	_uniform_buffers_memory_u.resize(_max_frames_in_flight);
 	_uniform_buffers_mapped.resize(_max_frames_in_flight);
 
 	for (size_t i = 0; i < _max_frames_in_flight; i++) {
 		create_buffer(
-			bufferSize,
+			buffer_size,
 			vk::BufferUsageFlagBits::eUniformBuffer,
 			vk::SharingMode::eExclusive,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
 			_uniform_buffers_u[i],
 			_uniform_buffers_memory_u[i]);
 
-		_uniform_buffers_mapped[i] = _device_u->mapMemory(*_uniform_buffers_memory_u[i], 0, bufferSize);
+		_uniform_buffers_mapped[i] = _device_u->mapMemory(*_uniform_buffers_memory_u[i], 0, buffer_size);
 	}
 	
 	LOG_INFO("Uniform buffers created.");
 }
 
-void tomway::RenderSystem::create_vertex_buffers() {
-	VkPhysicalDeviceMaintenance3Properties props3;
-	props3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES;
-	props3.pNext = NULL;
-	VkPhysicalDeviceProperties2 props2;
-	props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-	props2.pNext = &props3;
+void tomway::RenderSystem::create_vertex_buffers(std::vector<VertexChunk> const& chunks) {
+	_vertex_buffers_u.clear();
+	_vertex_buffers_u.resize(chunks.size());
+	_vertex_buffers_memory_u.clear();
+	_vertex_buffers_memory_u.resize(chunks.size());
+	_vertex_staging_buffers_u.clear();
+	_vertex_staging_buffers_u.resize(chunks.size());
+	_vertex_staging_buffers_memory_u.clear();
+	_vertex_staging_buffers_memory_u.resize(chunks.size());
+	_vertex_staging_memory.resize(chunks.size());
 	
-	vkGetPhysicalDeviceProperties2(_physical_device, &props2);
-	create_buffer(
-		_vertex_buffer_size,
-		vk::BufferUsageFlagBits::eTransferSrc,
-		vk::SharingMode::eExclusive,
-		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-		_staging_buffer_u,
-		_staging_buffer_memory_u);
+	for (size_t i = 0; i < chunks.size(); i++)
+	{
+		create_buffer(
+			chunks[i].max_size_bytes,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::SharingMode::eExclusive,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+			_vertex_staging_buffers_u[i],
+			_vertex_staging_buffers_memory_u[i]);
 
-	_staging_buffer_mapped = _device_u->mapMemory(*_staging_buffer_memory_u, 0, _vertex_buffer_size);
+		_vertex_staging_memory[i] = _device_u->mapMemory(*_vertex_staging_buffers_memory_u[i], 0, chunks[i].max_size_bytes);
 
-	create_buffer(
-		_vertex_buffer_size,
-		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-		vk::SharingMode::eExclusive,
-		vk::MemoryPropertyFlagBits::eDeviceLocal,
-		_vertex_buffer_u,
-		_vertex_buffer_memory_u);
-
+		create_buffer(
+			chunks[i].max_size_bytes,
+			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+			vk::SharingMode::eExclusive,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			_vertex_buffers_u[i],
+			_vertex_buffers_memory_u[i]);
+	}
+	
 	LOG_INFO("Vertex buffers created.");
 }
 
@@ -611,6 +613,7 @@ void tomway::RenderSystem::create_vk_instance() {
 void tomway::RenderSystem::draw_frame(Transform const& transform)
 {
 	ZoneScoped;
+	
 	if (_window_minimized) {
 		ZoneScopedN("tomway::RenderSystem::draw_frame | minimized wait");
 		_window_system.wait_while_minimized();
@@ -619,9 +622,17 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 
 	if (_cell_geometry.is_dirty()) {
 		ZoneScopedN("tomway::RenderSystem::draw_frame | Vertex transfer");
-		auto const& vertices = _cell_geometry.get_vertices();
-		_max_vertex_count = _cell_geometry.get_vertex_count();
-		transfer_vertices(vertices);
+	
+		auto const& vertex_chunks = _cell_geometry.get_vertices(_max_mem_allocation_size);
+
+		if (need_bigger_chunk_alloc(_vertex_chunks, vertex_chunks))
+		{
+			create_vertex_buffers(vertex_chunks);
+		}
+		
+		// TODO - transfer all chunks
+		_vertex_chunks = vertex_chunks;
+		transfer_vertices(vertex_chunks);
 		_cell_buffer_dirty = true;
 	}
 
@@ -721,18 +732,18 @@ void tomway::RenderSystem::new_frame()
 }
 
 void tomway::RenderSystem::pick_physical_device() {
-	uint32_t deviceCount = 0;
-	auto devices = _instance_u->enumeratePhysicalDevices();
+	auto const physical_devices = _instance_u->enumeratePhysicalDevices();
 
-	if (devices.size() == 0) {
+	if (physical_devices.size() == 0) {
 		throw std::runtime_error("Failed to find a GPU with Vulkan support!");
 	}
 
-	for (auto device : devices) {
-		if (is_device_suitable(device, *_surface_u, _required_device_extensions)) {
-			_physical_device = device;
+	for (auto physical_device : physical_devices) {
+		if (is_device_suitable(physical_device, *_surface_u, _required_device_extensions)) {
+			_physical_device = physical_device;
 			// _msaa_samples = get_max_usable_sample_count(device);
-			_queue_indices = find_queue_families(device, *_surface_u);
+			_queue_indices = find_queue_families(physical_device, *_surface_u);
+			_max_mem_allocation_size = get_max_memory_allocation(physical_device);
 			LOG_INFO("Physical device selected.");
 			return;
 		}
@@ -748,13 +759,15 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 
 	if (_cell_buffer_dirty)
 	{
-		// I'm not sure this belongs in *this* function, but this is functionally where it should happen
-		copy_buffer(
-			*_command_buffers_u[_curr_frame],
-			*_staging_buffer_u,
-			*_vertex_buffer_u,
-			_max_vertex_count * sizeof(Vertex));
-
+		for (size_t i = 0; i < _vertex_chunks.size(); i++)
+		{
+			copy_buffer(
+				*_command_buffers_u[_curr_frame],
+				*_vertex_staging_buffers_u[i],
+				*_vertex_buffers_u[i],
+				_vertex_chunks[i].max_size_bytes);
+		}
+		
 		_cell_buffer_dirty = false;
 	}
 
@@ -775,7 +788,6 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 
 	command_buffer.beginRenderPass(render_pass, vk::SubpassContents::eInline);
 	command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_graphics_pipeline_u);
-	command_buffer.bindVertexBuffers(0, *_vertex_buffer_u, { 0 }); // First binding, buffer, offsets
 
 	vk::Viewport viewport {
 		0, 0, // x and y
@@ -798,7 +810,12 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 
 	{
 		TracyVkZone(_tracy_contexts[_curr_frame], *_command_buffers_u[_curr_frame], "Draw Verts");
-		command_buffer.draw(static_cast<uint32_t>(_max_vertex_count), 1, 0, 0); // Vertex count, instance count, first vertex, first instance
+		
+		for (size_t i = 0; i < _vertex_chunks.size(); i++)
+		{
+			command_buffer.bindVertexBuffers(0, *_vertex_buffers_u[i], { 0 }); // First binding, buffer, offsets
+			command_buffer.draw(static_cast<uint32_t>(_vertex_chunks[i].vertex_count), 1, 0, 0); // Vertex count, instance count, first vertex, first instance
+		}
 	}
 
 	{
@@ -835,10 +852,14 @@ inline void tomway::RenderSystem::resize_framebuffer() {
 
 // TODO - use a different queue family for transfer operations
 // https://docs.vulkan.org/tutorial/latest/00_Introduction.html
-void tomway::RenderSystem::transfer_vertices(Vertex const* vertices) const
+void tomway::RenderSystem::transfer_vertices(std::vector<VertexChunk> const& vertex_chunks) const
 {
 	ZoneScoped;
-	memcpy(_staging_buffer_mapped, vertices, _max_vertex_count * sizeof(Vertex));
+
+	for (size_t i = 0; i < vertex_chunks.size(); i++)
+	{
+		memcpy(_vertex_staging_memory[i], vertex_chunks[i].vertices, vertex_chunks[i].data_size_bytes);
+	}
 }
 
 void tomway::RenderSystem::update_uniform_buffer(Transform transform) {
@@ -1092,9 +1113,9 @@ static vk::Format tomway::find_depth_format(const vk::PhysicalDevice& physical_d
 	throw std::runtime_error("Failed to find supported device format.\n");
 }
 
-static tomway::QueueFamilyIndices tomway::find_queue_families(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) {
+static tomway::QueueFamilyIndices tomway::find_queue_families(const vk::PhysicalDevice& physical_device, const vk::SurfaceKHR& surface) {
 	QueueFamilyIndices deviceIndices{};
-	auto queueFamilyProperties = device.getQueueFamilyProperties();
+	auto queueFamilyProperties = physical_device.getQueueFamilyProperties();
 
 	for (int i = 0; i < queueFamilyProperties.size() && !is_queue_family_complete(deviceIndices); i++) {
 		if (queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) {
@@ -1102,13 +1123,22 @@ static tomway::QueueFamilyIndices tomway::find_queue_families(const vk::Physical
 			deviceIndices.graphics_avail = true;
 		}
 
-		if (device.getSurfaceSupportKHR(i, surface)) {
+		if (physical_device.getSurfaceSupportKHR(i, surface)) {
 			deviceIndices.present_family = i;
 			deviceIndices.present_avail = true;
 		}
 	}
 
 	return deviceIndices;
+}
+
+size_t tomway::get_max_memory_allocation(const vk::PhysicalDevice& physical_device)
+{
+	vk::PhysicalDeviceMaintenance3Properties props3;
+	vk::PhysicalDeviceProperties2 props2;
+	props2.pNext = &props3;
+	physical_device.getProperties2(&props2);
+	return props3.maxMemoryAllocationSize;
 }
 
 static vk::SampleCountFlagBits tomway::get_max_usable_sample_count(const vk::PhysicalDevice& physical_device) {
@@ -1175,6 +1205,18 @@ static std::vector<char> tomway::read_shader_bytes(const std::string& file_path)
 	file.close();
 
 	return bytes;
+}
+
+inline bool tomway::need_bigger_chunk_alloc(std::vector<VertexChunk> const& curr_chunks, std::vector<VertexChunk> const& new_chunks)
+{
+	if (curr_chunks.size() < new_chunks.size()) return true;
+
+	for (size_t i = 0; i < curr_chunks.size(); i++)
+	{
+		if (curr_chunks[i].max_size_bytes < new_chunks[i].max_size_bytes) return true;
+	}
+
+	return false;
 }
 
 #pragma endregion

@@ -42,6 +42,7 @@ namespace tomway
             { InputButton::A, {}},
             { InputButton::D, {}},
             { InputButton::L, {}},
+            { InputButton::P, {}},
             { InputButton::R, {}},
             { InputButton::S, {}},
             { InputButton::W, {}},
