@@ -209,6 +209,7 @@
     <ClCompile Include="src\simulation\SimulationSystem.cpp" />
     <ClCompile Include="src\Tomway.cpp" />
     <ClCompile Include="src\TimeSystem.cpp" />
+    <ClCompile Include="src\ui_system.cpp" />
     <ClCompile Include="src\WindowSystem.cpp" />
     <ClCompile Include="src\HaglUtility.cpp" />
     <ClCompile Include="src\Vertex.cpp" />
@@ -217,6 +218,7 @@
   <ItemGroup>
     <ClInclude Include="include\audio\Audio.h" />
     <ClInclude Include="include\audio\AudioSystem.h" />
+    <ClInclude Include="include\audio\audio_config.h" />
     <ClInclude Include="include\audio\Channel.h" />
     <ClInclude Include="include\CameraController.h" />
     <ClInclude Include="include\CellGeometry.h" />
@@ -229,6 +231,7 @@
     <ClInclude Include="include\simulation\SimulationSystem.h" />
     <ClInclude Include="include\Tomway.h" />
     <ClInclude Include="include\TimeSystem.h" />
+    <ClInclude Include="include\ui_system.h" />
     <ClInclude Include="include\WindowSystem.h" />
     <ClInclude Include="include\HaglUtility.h" />
     <ClInclude Include="include\Vertex.h" />

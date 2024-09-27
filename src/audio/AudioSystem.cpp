@@ -10,6 +10,7 @@
 tomway::AudioSystem* tomway::AudioSystem::_inst = nullptr;
 
 tomway::AudioSystem::AudioSystem()
+    : _group_volumes({{ ChannelGroup::MUSIC, 1.0f}, { ChannelGroup::SFX, 1.0f }})
 {
     _soloud.init();
     _inst = this;
@@ -26,18 +27,19 @@ void tomway::AudioSystem::check_system_ready()
     if (not _inst) throw std::runtime_error("Audio system not available");
 }
 
-void tomway::AudioSystem::fade(Channel const& channel, float target, float time)
+void tomway::AudioSystem::fade(Channel& channel, float target, float time)
 {
     check_system_ready();
     if (not channel) return;
-    
+
+    _inst->_channel_volumes[channel] = target;
     _inst->_soloud.fadeVolume(channel._impl, target, time);
 }
 
 float tomway::AudioSystem::get_volume(Channel const& channel)
 {
     check_system_ready();
-    return channel._volume;
+    return _inst->_channel_volumes[channel];
 }
 
 float tomway::AudioSystem::get_volume(ChannelGroup channel_group)
@@ -82,7 +84,7 @@ tomway::Channel tomway::AudioSystem::play(Audio const& audio, ChannelGroup chann
     float const group_vol = _inst->_group_volumes[channel_group];
     float const global_vol = _inst->_soloud.getGlobalVolume();
     channel._impl = _inst->_soloud.play(*audio._impl, vol * group_vol * global_vol);
-    channel._volume = vol;
+    _inst->_channel_volumes[channel] = vol;
     _inst->_group_channels[channel_group].push_back(channel);
     
     return channel;
@@ -105,7 +107,8 @@ void tomway::AudioSystem::set_volume(ChannelGroup channel_group, float group_vol
 
     for(auto const& channel : _inst->_group_channels[channel_group])
     {
-        float const channel_vol = _inst->_soloud.getVolume(channel._impl);
+        if (_inst->_soloud.isFading(channel)) continue;
+        auto channel_vol = _inst->_channel_volumes[channel];
         _inst->_soloud.setVolume(channel, channel_vol * group_vol * global_vol);
     }
 
@@ -116,17 +119,33 @@ void tomway::AudioSystem::set_global_volume(float global_vol)
 {
     check_system_ready();
     _inst->_soloud.setGlobalVolume(global_vol);
-    float group_vol = 0.0f;
 
     for(auto const& pair : _inst->_group_channels)
     {
-        group_vol = _inst->_group_volumes[pair.first];
+        float group_vol = _inst->_group_volumes[pair.first];
         
         for (auto const& channel : pair.second) {
             if (not _inst->_soloud.isValidVoiceHandle(channel._impl)) continue;
-            _inst->_soloud.setVolume(channel._impl, channel._volume * group_vol * global_vol);
+            auto channel_vol = _inst->_channel_volumes[channel];
+            _inst->_soloud.setVolume(channel._impl, channel_vol * group_vol * global_vol);
         }
     }
+}
+
+tomway::audio_config tomway::AudioSystem::get_audio_config()
+{
+    return {
+        _inst->_soloud.getGlobalVolume(),
+        _inst->_group_volumes[ChannelGroup::MUSIC],
+        _inst->_group_volumes[ChannelGroup::SFX]
+    };
+}
+
+void tomway::AudioSystem::set_audio_config(audio_config audio_config)
+{
+    _inst->_soloud.setGlobalVolume(audio_config.global_volume);
+    set_volume(ChannelGroup::MUSIC, audio_config.music_volume);
+    set_volume(ChannelGroup::SFX, audio_config.sfx_volume);
 }
 
 void tomway::AudioSystem::new_frame()

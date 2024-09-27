@@ -29,20 +29,6 @@ tomway::WindowSystem::WindowSystem(unsigned const width, unsigned const height)
 
 	_window_id = SDL_GetWindowID(_window);
 	LOG_INFO("Window system initialized.");
-
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
-	
-	if (!ImGui_ImplSDL2_InitForVulkan(_window))
-	{
-		LOG_ERROR("ImGui failed to initialize SDL2 for Vulkan!");
-	}
-
-	LOG_INFO("Initialized ImGui for SDL2!");
 }
 
 tomway::WindowSystem::~WindowSystem()
@@ -88,11 +74,10 @@ void tomway::WindowSystem::get_vulkan_framebuffer_size(uint32_t& width, uint32_t
 std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 	ZoneScoped;
 	SDL_Event e;
-	std::vector<InputEvent> input_events;
-	ImGui_ImplSDL2_NewFrame();
+	std::vector<InputEvent> window_events;
 
 	while (SDL_PollEvent(&e)) {
-		ImGui_ImplSDL2_ProcessEvent(&e);
+		_sdl_ui_event_handler_fn(&e);
 		
 		switch (e.type) {
 		case SDL_WINDOWEVENT:
@@ -131,7 +116,7 @@ std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 			InputEventType const type = to_input_event_type(static_cast<SDL_EventType>(e.type));
 
 			if (button != InputButton::NONE) {
-				input_events.push_back({ type, button });
+				window_events.push_back({ type, button });
 			}
 		}
 		case SDL_MOUSEBUTTONUP:  // NOLINT(clang-diagnostic-implicit-fallthrough)
@@ -140,7 +125,7 @@ std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 			InputEventType const type = to_input_event_type(static_cast<SDL_EventType>(e.type));
 
 			if (button != InputButton::NONE) {
-				input_events.push_back({ type, button });
+				window_events.push_back({ type, button });
 			}
 			break;
 		}
@@ -151,8 +136,9 @@ std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 				float const mouse_x_vel = e.motion.xrel;
 				float const mouse_y_vel = e.motion.yrel;
 				
-				input_events.push_back({type, button, mouse_x_vel, mouse_y_vel});
+				window_events.push_back({type, button, mouse_x_vel, mouse_y_vel});
 			}
+			break;
 		default:
 			break;
 		}
@@ -163,7 +149,13 @@ std::vector<tomway::InputEvent> tomway::WindowSystem::handle_events() {
 		SDL_WarpMouseInWindow(_window, _window_width / 2, _window_height / 2);
 	}
 	
-	return input_events;
+	return window_events;
+}
+
+bool tomway::WindowSystem::init_ui_sdl(sdl_ui_init_fn init_fn, sdl_ui_event_handler_fn event_handler_fn)
+{
+	_sdl_ui_event_handler_fn = event_handler_fn;
+	return init_fn(_window);
 }
 
 void tomway::WindowSystem::register_framebuffer_resize_callback(std::function<void()> const& callback) {

@@ -20,10 +20,11 @@
 #include "CameraController.h"
 #include "imgui.h"
 #include "nfd.h"
+#include "ui_system.h"
 #include "audio/AudioSystem.h"
 #include "input/InputSystem.h"
 
-size_t constexpr GRID_SIZE = 1000;
+size_t constexpr GRID_SIZE = 600;
 
 int main(int argc, char* argv[])
 {
@@ -31,13 +32,18 @@ int main(int argc, char* argv[])
 	tomway::CellGeometry cell_geometry_generator;
 	tomway::WindowSystem window_system(1024, 768);
 	tomway::AudioSystem audio_system;
-	tomway::InputSystem input_system;
-	tomway::TimeSystem time_system(5);
-	tomway::CameraController camera_controller({0.0f, 0.0f, GRID_SIZE >= 1000.0f ? 990.0f : GRID_SIZE}, 90.0f, 0.0f);
+	
+	tomway::ui_system ui_system(window_system);
+	bool start = false, exit_loop = false;
+	tomway::ui_system::bind_menu_callbacks([&start]() { start = true; }, [&exit_loop] { exit_loop = true; });
 
 	tomway::RenderSystem render_system(
 		window_system,
 		cell_geometry_generator);
+	
+	tomway::InputSystem input_system;
+	tomway::TimeSystem time_system(5);
+	tomway::CameraController camera_controller({0.0f, 0.0f, GRID_SIZE >= 1000.0f ? 990.0f : GRID_SIZE}, 90.0f, 0.0f);
 
 	float delta = 0;
 	uint32_t width, height;
@@ -59,22 +65,23 @@ int main(int argc, char* argv[])
 
 	auto music_audio = tomway::AudioSystem::stream_file("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
 	auto music_channel = tomway::AudioSystem::play(music_audio, tomway::ChannelGroup::MUSIC, 0);
-	tomway::AudioSystem::fade(music_channel, 0.2f, 90);
+	tomway::AudioSystem::fade(music_channel, 0.2f, 10);
 
 	auto button_audio = tomway::AudioSystem::load_file("assets/audio/click5.ogg");
 	auto iteration_audio = tomway::AudioSystem::load_file("assets/audio/bong_001.ogg");
 	
 	while (true) {
 		ZoneScopedN("SDL_main | game loop");
-		auto input_events = window_system.handle_events();
+		ui_system.new_frame();
+		auto window_events = window_system.handle_events();
 		render_system.new_frame();
 		window_system.get_vulkan_framebuffer_size(width, height);
 		audio_system.new_frame();
 		input_system.new_frame();
-		input_system.process_events(input_events);
+		input_system.process_events(window_events);
 		delta = time_system.new_frame();
 		
-		if (tomway::InputSystem::btn_just_down(tomway::InputButton::ESCAPE)) break;
+		if (tomway::InputSystem::btn_just_down(tomway::InputButton::ESCAPE)) tomway::ui_system::toggle_menu();
 		if (tomway::InputSystem::btn_just_up(tomway::InputButton::SPACE)) step = true;
 		if (tomway::InputSystem::btn_just_up(tomway::InputButton::L)) locked = !locked;
 		if (tomway::InputSystem::btn_just_up(tomway::InputButton::F1)) window_system.toggle_mouse_visible();
@@ -114,21 +121,22 @@ int main(int argc, char* argv[])
 			window_system.set_mouse_visible(false);
 			camera_controller.reset();
 		}
-		
+
 		if (main_menu)
 		{
-			tomway::draw_main_menu(&main_menu);
-			
-			if (not main_menu)
-			{
-				simulation_system.start(GRID_SIZE);
-				auto cells = simulation_system.get_current_cells();
-				cell_geometry_generator.bind_cells(cells);
-				tomway::AudioSystem::play(button_audio, tomway::ChannelGroup::SFX, 0.2f);
-				window_system.set_mouse_visible(false);
-			}
+			tomway::ui_system::show_menu();
+			main_menu = false;
 		}
-		else
+
+		if (start)
+		{
+			simulation_system.start(GRID_SIZE);
+			auto const cells = simulation_system.get_current_cells();
+			cell_geometry_generator.bind_cells(cells);
+			start = false;
+		}
+		
+		if (not ui_system.is_menu_open())
 		{
 			if (tomway::InputSystem::btn_just_up(tomway::InputButton::P))
 			{
@@ -158,42 +166,23 @@ int main(int argc, char* argv[])
 		transform.view = camera_controller.get_view_transform();
 		transform.projection = camera_controller.get_projection_transform(width, height);
 		
+		ui_system.build_ui();
+
+		if (exit_loop) break;
+		
 		render_system.draw_frame(transform);
+		
 		FrameMark;
 	}
 
 	exit(0);
 }
 
-void tomway::draw_main_menu(bool* main_menu)
-{
-    ZoneScoped;
-	ImGuiWindowFlags constexpr window_flags =
-		ImGuiWindowFlags_NoDecoration
-		| ImGuiWindowFlags_NoDocking
-		| ImGuiWindowFlags_AlwaysAutoResize
-		| ImGuiWindowFlags_NoSavedSettings
-		| ImGuiWindowFlags_NoFocusOnAppearing
-		| ImGuiWindowFlags_NoNav
-		| ImGuiWindowFlags_NoBackground;
-
-	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-	ImGui::Begin("Main Menu", main_menu, window_flags);
-
-	
-	if (ImGui::Button("Start", { 200, 50 }))
-	{
-		*main_menu = false;
-	}
-
-	ImGui::End();
-}
-
 std::string tomway::get_file_location()
 {
     ZoneScoped;
-	nfdchar_t *outPath = NULL;
-	nfdresult_t result = NFD_OpenDialog( NULL, NULL, &outPath );
+	nfdchar_t *outPath = nullptr;
+	nfdresult_t result = NFD_OpenDialog(nullptr, nullptr, &outPath );
         
 	if ( result == NFD_OKAY ) {
 		LOG_INFO(outPath);

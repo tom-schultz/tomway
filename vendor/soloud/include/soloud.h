@@ -436,6 +436,8 @@ namespace SoLoud
 		int getVoiceFromHandle_internal(handle aVoiceHandle) const;
 		// Converts voice + playindex into handle
 		handle getHandleFromVoice_internal(unsigned int aVoice) const;
+		// Returns true if the fader is active
+		bool isFading(handle aVoice) const;
 		// Stop voice (not handle).
 		void stopVoice_internal(unsigned int aVoice);
 		// Set voice (not handle) pan.

@@ -50,6 +50,13 @@ namespace SoLoud
 		return (aVoice + 1) | (mVoice[aVoice]->mPlayIndex << 12);
 	}
 
+	bool Soloud::isFading(handle aVoiceHandle) const
+	{
+		int const ch = getVoiceFromHandle_internal(aVoiceHandle);
+		auto const fade_state = mVoice[ch]->mVolumeFader.mActive;
+		return fade_state == 1 || fade_state == 2;
+	}
+
 	int Soloud::getVoiceFromHandle_internal(handle aVoiceHandle) const
 	{
 		// If this is a voice group handle, pick the first handle from the group

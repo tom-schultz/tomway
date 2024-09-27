@@ -6,6 +6,6 @@
 
 namespace tomway
 {
-    void draw_main_menu(bool* main_menu);
     std::string get_file_location();
+    void start_menu_callback();
 }
