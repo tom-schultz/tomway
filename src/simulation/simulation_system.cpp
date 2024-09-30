@@ -12,22 +12,65 @@ tomway::simulation_system::simulation_system()
 {
 }
 
-void tomway::simulation_system::deserialize(std::string const& json)
+bool tomway::simulation_system::deserialize(std::string const& json)
 {
     ZoneScoped;
     rapidjson::Document document;
     document.Parse(json.c_str());
+
+    if (not document.HasMember("cells") or not document["cells"].IsArray())
+    {
+        LOG_ERROR("Malformed save file: document[\"cells\"] not present or not array.");
+        return false;
+    }
+    
     auto const& json_data = document["cells"].GetArray();
-    _grid_size = document["grid_size"].GetUint64();
+
+    if (not document.HasMember("grid_size") or not document["grid_size"].IsUint64())
+    {
+        LOG_ERROR("Malformed save file: document[\"grid_size\"] not present or not uint64.");
+        return false;
+    }
+    
+    auto grid_size = document["grid_size"].GetUint64();
+
+    if (json_data.Size() > grid_size * grid_size)
+    {
+        LOG_ERROR("Malformed save file: grid_size * grid_size is less than cell count.");
+        return false;
+    }
+
+    // Validation pass
+    for (rapidjson::SizeType i = 0; i < json_data.Size(); i++)
+    {
+        if (not json_data[i].IsArray())
+        {
+            LOG_ERROR("Cell at position %d is not an array.", i);
+            return false;
+        }
+        
+        auto const& json_cell = json_data[i].GetArray();
+        
+        if (json_cell.Size() != 2 or not json_cell[0].IsUint64() or not json_cell[1].IsUint64())
+        {
+            LOG_ERROR("Cell at position %d does not have two uint64 members.", i);
+            return false;
+        }
+        
+    }
+    
+    _grid_size = grid_size;
+    _index = 0;
     _cells[0] = { _grid_size };
     _cells[1] = { _grid_size };
-    _index = 0;
-
+    
     for (rapidjson::SizeType i = 0; i < json_data.Size(); i++)
     {
         auto const& json_cell = json_data[i].GetArray();
         _cells[0].set_alive(json_cell[0].GetUint64(), json_cell[1].GetUint64(), true);
     }
+
+    return true;
 }
 
 size_t tomway::simulation_system::get_cell_count() const

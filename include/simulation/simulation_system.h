@@ -16,7 +16,7 @@ namespace tomway
         simulation_system& operator=(simulation_system const&) = delete;
         simulation_system& operator=(simulation_system const&&) = delete;
         
-        void deserialize(std::string const& json);
+        bool deserialize(std::string const& json);
         size_t get_cell_count() const;
         cell_container const* get_current_cells() const;
         void new_frame();

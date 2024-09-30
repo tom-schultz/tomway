@@ -83,13 +83,13 @@ void tomway::ui_system::hide_loading_screen()
 void tomway::ui_system::hide_menu()
 {
     check_system_ready();
-    _inst->_menu_open = false;
+    _inst->_menu_state = menu_state::sim;
 }
 
 bool tomway::ui_system::is_menu_open()
 {
     check_system_ready();
-    return _inst->_menu_open;
+    return _inst->_menu_state != menu_state::sim;
 }
 
 void tomway::ui_system::show_loading_screen()
@@ -102,15 +102,13 @@ void tomway::ui_system::show_loading_screen()
 void tomway::ui_system::show_menu()
 {
     check_system_ready();
-    _inst->_menu_open = true;
     _inst->_menu_state = menu_state::main_menu;
 }
 
 void tomway::ui_system::toggle_menu()
 {
     check_system_ready();
-    _inst->_menu_open = not _inst->_menu_open;
-    _inst->_menu_state = menu_state::main_menu;
+    _inst->_menu_state = _inst->_menu_state == menu_state::sim ? menu_state::main_menu : menu_state::sim;
 }
 
 void tomway::ui_system::_draw_debug()
@@ -165,7 +163,7 @@ void tomway::ui_system::build_ui()
     {
         _draw_loading();
     }
-    else if (_menu_open)
+    else if (_menu_state != menu_state::sim)
     {
         _draw_menu();
     }
@@ -182,8 +180,6 @@ void tomway::ui_system::new_frame() const
 void tomway::ui_system::_draw_menu()
 {
     ZoneScoped;
-    
-    if (not _menu_open) return;
 
     switch (_menu_state)
     {
@@ -192,6 +188,8 @@ void tomway::ui_system::_draw_menu()
         break;
     case menu_state::audio:
         _draw_audio_menu();
+        break;
+    case menu_state::sim:
         break;
     default:
         break;
@@ -243,7 +241,7 @@ void tomway::ui_system::_draw_main_menu()
     if (ImGui::Button("Start", { 200, 50 }))
     {
         audio_system::play(_button_audio, channel_group::SFX, 0.2f);
-        _menu_open = false;
+        _menu_state = menu_state::sim;
         if (_menu_start_callback) _menu_start_callback();
     }
 	

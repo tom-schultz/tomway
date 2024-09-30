@@ -626,7 +626,7 @@ void tomway::render_system::draw_frame(transform const& transform)
 	
 		auto const& vertex_chunks = _cell_geometry.get_vertices(_max_mem_allocation_size);
 
-		if (need_bigger_chunk_alloc(_vertex_chunks, vertex_chunks))
+		if (vertex_chunks.size() and need_bigger_chunk_alloc(_vertex_chunks, vertex_chunks))
 		{
 			create_vertex_buffers(vertex_chunks);
 		}

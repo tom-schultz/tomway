@@ -59,7 +59,6 @@ namespace tomway
         audio _button_audio;
         std::vector<std::string> _debug_texts;
         bool _loading_screen = false;
-        bool _menu_open = false;
         menu_exit_callback _menu_exit_callback;
         menu_start_callback _menu_start_callback;
         get_sim_config_fn _sim_config_get_fn;

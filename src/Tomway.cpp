@@ -50,7 +50,16 @@ int main(int argc, char* argv[])
 	bool step = false;
 	bool locked = true;
 	bool loading = false;
+	bool deser = false;
+	std::string load_path;
 	size_t new_grid_size = 0;
+
+	auto music_audio = tomway::audio_system::stream_file("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
+	auto music_channel = tomway::audio_system::play(music_audio, tomway::channel_group::MUSIC, 0);
+	tomway::audio_system::fade(music_channel, 0.2f, 10);
+
+	auto button_audio = tomway::audio_system::load_file("assets/audio/click5.ogg");
+	auto iteration_audio = tomway::audio_system::load_file("assets/audio/bong_001.ogg");
 
 #ifdef PERF
 	bool main_menu = false;
@@ -62,15 +71,8 @@ int main(int argc, char* argv[])
 	simulation_system.deserialize(data);
 	cell_geometry_generator.bind_cells(simulation_system.get_current_cells());
 #else
-	bool main_menu = true;
+	tomway::ui_system::show_menu();
 #endif
-
-	auto music_audio = tomway::audio_system::stream_file("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
-	auto music_channel = tomway::audio_system::play(music_audio, tomway::channel_group::MUSIC, 0);
-	tomway::audio_system::fade(music_channel, 0.2f, 10);
-
-	auto button_audio = tomway::audio_system::load_file("assets/audio/click5.ogg");
-	auto iteration_audio = tomway::audio_system::load_file("assets/audio/bong_001.ogg");
 	
 	while (true) {
 		ZoneScopedN("SDL_main | game loop");
@@ -84,60 +86,74 @@ int main(int argc, char* argv[])
 		delta = time_system.new_frame();
 		simulation_system.new_frame();
 		
-		if (tomway::input_system::btn_just_down(tomway::input_button::ESCAPE)) tomway::ui_system::toggle_menu();
 		if (tomway::input_system::btn_just_up(tomway::input_button::SPACE)) step = true;
 		if (tomway::input_system::btn_just_up(tomway::input_button::L)) locked = !locked;
 		if (tomway::input_system::btn_just_up(tomway::input_button::F1)) window_system.toggle_mouse_visible();
-
-		if (tomway::input_system::btn_just_up(tomway::input_button::R))
+		
+		if (tomway::input_system::btn_just_down(tomway::input_button::ESCAPE))
 		{
-			tomway::audio_system::play(button_audio, tomway::channel_group::SFX, 0.2f);
-			simulation_system.start(0);
-			main_menu = true;
-			locked = true;
-			window_system.set_mouse_visible(true);
-			camera_controller.reset();
-		}
-
-		if (tomway::input_system::btn_just_up(tomway::input_button::F2))
-		{
-			auto data = simulation_system.serialize();
-			auto save_path = tomway::get_file_location();
-			std::ofstream save_file;
-			
-			save_file.open(save_path);
-			save_file << data;
-			save_file.close();
-		}
-
-		if (tomway::input_system::btn_just_up(tomway::input_button::F3))
-		{
-			auto save_path = tomway::get_file_location();
-			std::string data;
-			std::ifstream save_file;
-			
-			save_file.open(save_path);
-			save_file >> data;
-			save_file.close();
-			simulation_system.deserialize(data);
-			
-			window_system.set_mouse_visible(false);
-			camera_controller.reset();
-		}
-
-		if (main_menu)
-		{
-			tomway::ui_system::show_menu();
-			main_menu = false;
+			tomway::ui_system::toggle_menu();
+			window_system.set_mouse_visible(tomway::ui_system::is_menu_open());
 		}
 
 		if (loading)
 		{
-			simulation_system.start(new_grid_size);
-			auto const cells = simulation_system.get_current_cells();
-			cell_geometry_generator.bind_cells(cells);
+			bool deser_success = true;
+			
+			if (deser)
+			{
+				std::string data;
+				std::ifstream save_file;
+				save_file.open(load_path);
+
+				if (save_file)
+				{
+					save_file >> data;
+					save_file.close();
+					deser_success = simulation_system.deserialize(data);
+				}
+				else
+				{
+					LOG_ERROR("Could not load file: %s", load_path.c_str());
+				}
+				
+				deser = false;
+			}
+			else
+			{
+				simulation_system.start(new_grid_size);
+			}
+			
 			loading = false;
+			camera_controller.reset();
 			tomway::ui_system::hide_loading_screen();
+
+			if (deser_success)
+			{
+				auto const cells = simulation_system.get_current_cells();
+				cell_geometry_generator.bind_cells(cells);
+				tomway::ui_system::hide_menu();
+			}
+			else
+			{
+				tomway::ui_system::show_menu();
+				window_system.set_mouse_visible(true);
+			}
+		}
+
+		if (tomway::input_system::btn_just_up(tomway::input_button::F3))
+		{
+			load_path = tomway::get_file_location();
+
+			if (not load_path.empty())
+			{
+				loading = true;
+				deser = true;
+				window_system.set_mouse_visible(false);
+				camera_controller.reset();
+				locked = true;
+				tomway::ui_system::show_loading_screen();
+			}
 		}
 
 		if (start)
@@ -146,10 +162,40 @@ int main(int argc, char* argv[])
 			new_grid_size = GRID_SIZE;
 			loading = true;
 			start = false;
+			locked = true;
 		}
 		
 		if (not tomway::ui_system::is_menu_open())
 		{
+			if (tomway::input_system::btn_just_up(tomway::input_button::F2))
+			{
+				auto save_path = tomway::get_file_location();
+
+				if (not save_path.empty())
+				{
+					std::ofstream save_file;
+					save_file.open(save_path);
+
+					if (save_file)
+					{
+						auto data = simulation_system.serialize();
+						save_file << data;
+						save_file.close();
+					}
+				}
+			}
+			
+			if (tomway::input_system::btn_just_up(tomway::input_button::R))
+			{
+				tomway::audio_system::play(button_audio, tomway::channel_group::SFX, 0.2f);
+				simulation_system.start(0);
+				cell_geometry_generator.bind_cells(simulation_system.get_current_cells());
+				tomway::ui_system::show_menu();
+				locked = true;
+				window_system.set_mouse_visible(true);
+				camera_controller.reset();
+			}
+			
 			if (tomway::input_system::btn_just_up(tomway::input_button::P))
 			{
 				tomway::ui_system::show_loading_screen();
@@ -193,20 +239,23 @@ int main(int argc, char* argv[])
 std::string tomway::get_file_location()
 {
     ZoneScoped;
-	nfdchar_t *outPath = nullptr;
-	nfdresult_t result = NFD_OpenDialog(nullptr, nullptr, &outPath );
+	nfdchar_t *out_path = nullptr;
+	nfdresult_t result = NFD_OpenDialog(nullptr, nullptr, &out_path );
+	std::string ret = {};
         
-	if ( result == NFD_OKAY ) {
-		LOG_INFO(outPath);
+	if (result == NFD_OKAY && out_path != nullptr)
+	{
+		ret = out_path;
 	}
-	else if ( result == NFD_CANCEL ) {
-		LOG_INFO("User pressed cancel.");
+	else if (result == NFD_CANCEL)
+	{
+		LOG_INFO("User pressed cancel on file dialog.");
 	}
-	else {
+	else
+	{
 		LOG_ERROR("Error: %s\n", NFD_GetError() );
 	}
 
-	std::string ret(outPath);
-	free(outPath);
+	free(out_path);
 	return ret;
 }
