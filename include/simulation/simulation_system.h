@@ -10,6 +10,12 @@ namespace tomway
     {
     public:
         simulation_system();
+        ~simulation_system() = default;
+        simulation_system(simulation_system&) = delete;
+        simulation_system(simulation_system&&) = delete;
+        simulation_system& operator=(simulation_system const&) = delete;
+        simulation_system& operator=(simulation_system const&&) = delete;
+        
         void deserialize(std::string const& json);
         size_t get_cell_count() const;
         cell_container const* get_current_cells() const;

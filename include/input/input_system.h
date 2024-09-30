@@ -20,7 +20,6 @@ namespace tomway
     public:
         input_system();
         ~input_system();
-        
         input_system(input_system&) = delete;
         input_system(input_system&&) = delete;
         input_system& operator=(input_system const&) = delete;

@@ -15,7 +15,12 @@ namespace tomway {
 	{
 	public:
 		window_system(unsigned width, unsigned height);
-		~window_system();
+		~window_system() = default;
+		window_system(window_system&) = delete;
+		window_system(window_system&&) = delete;
+		window_system& operator=(window_system const&) = delete;
+		window_system& operator=(window_system const&&) = delete;
+		
 		vk::UniqueSurfaceKHR create_vulkan_surface(vk::Instance const& instance) const;
 		std::vector<const char*> get_extensions() const;
 		bool get_mouse_visible();

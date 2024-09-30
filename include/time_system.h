@@ -9,6 +9,12 @@ namespace tomway
     {
     public:
         time_system(float ticks_per_sec = 60);
+        ~time_system() = default;
+        time_system(time_system&) = delete;
+        time_system(time_system&&) = delete;
+        time_system& operator=(time_system const&) = delete;
+        time_system& operator=(time_system const&&) = delete;
+        
         float get_millis() const;
         bool get_new_tick() const;
         float new_frame();

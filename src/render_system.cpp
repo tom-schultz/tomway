@@ -84,6 +84,7 @@ tomway::render_system::render_system(window_system& window_system, cell_geometry
 	}
 
 	LOG_INFO("Initialized ImGui for Vulkan!");
+	
 	for (auto const& command_buffer : _command_buffers_u)
 	{
 		auto ctx = TracyVkContext(_physical_device, *_device_u, _graphics_queue, *command_buffer);

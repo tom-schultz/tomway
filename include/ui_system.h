@@ -25,6 +25,12 @@ namespace tomway
     {
     public:
         ui_system(window_system& window_system);
+        ~ui_system();
+        ui_system(ui_system&) = delete;
+        ui_system(ui_system&&) = delete;
+        ui_system& operator=(ui_system const&) = delete;
+        ui_system& operator=(ui_system const&&) = delete;
+        
         static void bind_audio_config(get_audio_config_fn get_config_fn, set_audio_config_fn set_config_fn);
         
         static void bind_menu_callbacks(
@@ -32,15 +38,16 @@ namespace tomway
             menu_exit_callback const& menu_exit_callback);
         
         static void bind_sim_config(get_sim_config_fn get_config_fn, set_sim_config_fn set_config_fn);
+        static void check_system_ready();
         static void add_debug_text(std::string const& text);
         static void hide_loading_screen();
         static void hide_menu();
+        static bool is_menu_open();
         static void show_loading_screen();
         static void show_menu();
         static void toggle_menu();
 
         void build_ui();
-        bool is_menu_open() const;
         void new_frame() const;
 
     private:
@@ -50,19 +57,21 @@ namespace tomway
         get_audio_config_fn _audio_config_get_fn;
         set_audio_config_fn _audio_config_set_fn;
         audio _button_audio;
-        menu_start_callback _menu_start_callback;
+        std::vector<std::string> _debug_texts;
+        bool _loading_screen = false;
+        bool _menu_open = false;
         menu_exit_callback _menu_exit_callback;
+        menu_start_callback _menu_start_callback;
         get_sim_config_fn _sim_config_get_fn;
         set_sim_config_fn _sim_config_set_fn;
-        std::vector<std::string> _debug_texts;
         
-        bool _menu_open = false;
         menu_state _menu_state = menu_state::main_menu;
 
         void _draw_debug();
-        void _draw_menu();
+        void _draw_loading();
         void _draw_audio_menu();
         void _draw_main_menu();
+        void _draw_menu();
     };
 }
 

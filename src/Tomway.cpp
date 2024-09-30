@@ -49,6 +49,8 @@ int main(int argc, char* argv[])
 	uint32_t width, height;
 	bool step = false;
 	bool locked = true;
+	bool loading = false;
+	size_t new_grid_size = 0;
 
 #ifdef PERF
 	bool main_menu = false;
@@ -129,21 +131,30 @@ int main(int argc, char* argv[])
 			main_menu = false;
 		}
 
-		if (start)
+		if (loading)
 		{
-			simulation_system.start(GRID_SIZE);
+			simulation_system.start(new_grid_size);
 			auto const cells = simulation_system.get_current_cells();
 			cell_geometry_generator.bind_cells(cells);
+			loading = false;
+			tomway::ui_system::hide_loading_screen();
+		}
+
+		if (start)
+		{
+			tomway::ui_system::show_loading_screen();
+			new_grid_size = GRID_SIZE;
+			loading = true;
 			start = false;
 		}
 		
-		if (not ui_system.is_menu_open())
+		if (not tomway::ui_system::is_menu_open())
 		{
 			if (tomway::input_system::btn_just_up(tomway::input_button::P))
 			{
-				simulation_system.start(2500);
-				auto const cells = simulation_system.get_current_cells();
-				cell_geometry_generator.bind_cells(cells);
+				tomway::ui_system::show_loading_screen();
+				new_grid_size = 2500;
+				loading = true;
 			}
 			
 			if (not window_system.get_mouse_visible())

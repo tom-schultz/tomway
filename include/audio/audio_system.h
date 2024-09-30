@@ -18,7 +18,6 @@ namespace tomway
     public:
         audio_system();
         ~audio_system();
-        
         audio_system(audio_system&) = delete;
         audio_system(audio_system&&) = delete;
         audio_system& operator=(audio_system const&) = delete;

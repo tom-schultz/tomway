@@ -33,8 +33,21 @@ tomway::ui_system::ui_system(window_system& window_system)
     _button_audio = audio_system::load_file("assets/audio/click5.ogg");
 }
 
+tomway::ui_system::~ui_system()
+{
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void tomway::ui_system::add_debug_text(std::string const& text)
+{
+    check_system_ready();
+    _inst->_debug_texts.push_back(text);
+}
+
 void tomway::ui_system::bind_audio_config(get_audio_config_fn const get_config_fn, set_audio_config_fn const set_config_fn)
 {
+    check_system_ready();
     _inst->_audio_config_get_fn = get_config_fn;
     _inst->_audio_config_set_fn = set_config_fn;
 }
@@ -43,44 +56,59 @@ void tomway::ui_system::bind_menu_callbacks(
     menu_start_callback const& menu_start_callback,
     menu_exit_callback const& menu_exit_callback)
 {
+    check_system_ready();
     _inst->_menu_start_callback = menu_start_callback;
     _inst->_menu_exit_callback = menu_exit_callback;
 }
 
 void tomway::ui_system::bind_sim_config(get_sim_config_fn const get_config_fn, set_sim_config_fn const set_config_fn)
 {
+    check_system_ready();
     _inst->_sim_config_get_fn = get_config_fn;
     _inst->_sim_config_set_fn = set_config_fn;
 }
 
-void tomway::ui_system::add_debug_text(std::string const& text)
+void tomway::ui_system::check_system_ready()
 {
-    _inst->_debug_texts.push_back(text);
+    if (not _inst) throw std::runtime_error("UI system not available");
 }
 
 void tomway::ui_system::hide_loading_screen()
 {
+    check_system_ready();
+    _inst->_loading_screen = false;
     LOG_INFO("Hide Loading Screen");
 }
 
 void tomway::ui_system::hide_menu()
 {
+    check_system_ready();
     _inst->_menu_open = false;
+}
+
+bool tomway::ui_system::is_menu_open()
+{
+    check_system_ready();
+    return _inst->_menu_open;
 }
 
 void tomway::ui_system::show_loading_screen()
 {
+    check_system_ready();
+    _inst->_loading_screen = true;
     LOG_INFO("Show Loading Screen");
 }
 
 void tomway::ui_system::show_menu()
 {
+    check_system_ready();
     _inst->_menu_open = true;
     _inst->_menu_state = menu_state::main_menu;
 }
 
 void tomway::ui_system::toggle_menu()
 {
+    check_system_ready();
     _inst->_menu_open = not _inst->_menu_open;
     _inst->_menu_state = menu_state::main_menu;
 }
@@ -100,15 +128,47 @@ void tomway::ui_system::_draw_debug()
     _debug_texts.clear();
 }
 
+void tomway::ui_system::_draw_loading()
+{
+    ImGuiWindowFlags constexpr window_flags =
+        ImGuiWindowFlags_NoDecoration
+        | ImGuiWindowFlags_NoDocking
+        | ImGuiWindowFlags_AlwaysAutoResize
+        | ImGuiWindowFlags_NoSavedSettings
+        | ImGuiWindowFlags_NoFocusOnAppearing
+        | ImGuiWindowFlags_NoNav;
+
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    auto display_size = ImGui::GetIO().DisplaySize;
+    ImGui::SetNextWindowSize(ImVec2(display_size.x, display_size.y));
+    
+    ImGui::SetNextWindowBgAlpha(1.0f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::Begin("Loading", nullptr, window_flags);
+    ImGui::PopStyleColor();
+    auto text_size = ImGui::CalcTextSize("Loading...");
+    
+    auto cursor_pos = ImVec2(
+        (display_size.x - text_size.x) / 2,
+        (display_size.y - text_size.y) / 2);
+    
+    ImGui::SetCursorPos(cursor_pos);
+    ImGui::Text("Loading...");
+    ImGui::End();
+}
+
 void tomway::ui_system::build_ui()
 {
     _draw_debug();
-    _draw_menu();
-}
-
-bool tomway::ui_system::is_menu_open() const
-{
-    return _menu_open;
+    
+    if (_loading_screen)
+    {
+        _draw_loading();
+    }
+    else if (_menu_open)
+    {
+        _draw_menu();
+    }
 }
 
 // Do not make me static, this should only be called through the instance itself
@@ -132,6 +192,8 @@ void tomway::ui_system::_draw_menu()
         break;
     case menu_state::audio:
         _draw_audio_menu();
+        break;
+    default:
         break;
     }
 }

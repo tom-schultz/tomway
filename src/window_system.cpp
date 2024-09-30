@@ -31,12 +31,6 @@ tomway::window_system::window_system(unsigned const width, unsigned const height
 	LOG_INFO("Window system initialized.");
 }
 
-tomway::window_system::~window_system()
-{
-	ImGui_ImplSDL2_Shutdown();
-	ImGui::DestroyContext();
-}
-
 vk::UniqueSurfaceKHR tomway::window_system::create_vulkan_surface(const vk::Instance& instance) const
 {
 	VkSurfaceKHR surface;
