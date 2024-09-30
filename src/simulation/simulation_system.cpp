@@ -8,7 +8,7 @@
 
 tomway::simulation_system::simulation_system()
     : _grid_size(0),
-    _cells{ { 0 }, { 0 } }
+    _cells{ cell_container(0), cell_container(0) }
 {
 }
 

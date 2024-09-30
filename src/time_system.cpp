@@ -31,7 +31,7 @@ float tomway::time_system::new_frame()
     _frame_accumulator += 1;
     _frame_timer += delta;
 
-    if (_frame_timer > 1.0f) {
+    if (_frame_timer >= 1.0f) {
         _fps = _frame_accumulator - _last_sec_frames;
         LOG_INFO("FPS: %d", _fps);
         _last_sec_frames = _frame_accumulator;

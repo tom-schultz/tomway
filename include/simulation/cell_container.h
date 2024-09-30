@@ -17,7 +17,7 @@ namespace tomway
             const_iterator(std::vector<cell>::const_iterator const& c);
         };
 
-        cell_container(size_t grid_size);
+        explicit cell_container(size_t grid_size);
         iterator begin();
         const_iterator begin() const;
         void copy_from(cell_container const& other);

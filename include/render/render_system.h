@@ -34,6 +34,10 @@ namespace tomway {
 	public:
 		render_system(window_system& window_system, cell_geometry& cell_geometry, unsigned max_frames_in_flight = 2);
 		~render_system();
+		render_system(render_system&) = delete;
+		render_system(render_system&&) = delete;
+		render_system& operator=(render_system const&) = delete;
+		render_system& operator=(render_system const&&) = delete;
 
 		void draw_frame(transform const& transform);
 		void minimized();

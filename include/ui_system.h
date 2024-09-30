@@ -5,15 +5,10 @@
 #include "window_system.h"
 #include "audio/audio.h"
 #include "audio/audio_config.h"
+#include "simulation/sim_config.h"
 
 namespace tomway
-{
-    struct sim_config
-    {
-        float grid_size;
-        float tick_per_second;
-    };
-    
+{    
     using get_audio_config_fn = audio_config(*)();
     using set_audio_config_fn = void(*)(const audio_config&);
     using get_sim_config_fn = sim_config(*)();
@@ -64,7 +59,7 @@ namespace tomway
         get_sim_config_fn _sim_config_get_fn;
         set_sim_config_fn _sim_config_set_fn;
         
-        menu_state _menu_state = menu_state::main_menu;
+        menu_state _menu_state = menu_state::sim;
 
         void _draw_debug();
         void _draw_loading();

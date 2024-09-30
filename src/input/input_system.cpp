@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include "tomway_utility.h"
 #include "Tracy.hpp"
 
 tomway::input_system* tomway::input_system::_inst = nullptr;

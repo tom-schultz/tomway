@@ -3,6 +3,7 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
+#include "tomway_utility.h"
 #include "Tracy.hpp"
 #include "input/input_system.h"
 
@@ -53,11 +54,23 @@ void tomway::camera_controller::reset()
 void tomway::camera_controller::update(float delta)
 {
     ZoneScoped;
-	glm::vec2 const mouse_vel = input_system::get_mouse_vel();
+	glm::vec2 mouse_vel = input_system::get_mouse_vel();
+
+	if (mouse_vel != glm::vec2())
+	{
+		mouse_vel = glm::normalize(mouse_vel);
+	}
 				
 	// Inverted
-	_vert_rot -= mouse_vel.y * delta * 180.0f;
-	_hor_rot -= mouse_vel.x * delta * 180.0f;
+	auto vert_delta = mouse_vel.y * delta * 180.0f;
+	_vert_rot -= vert_delta;
+	auto hor_delta = mouse_vel.x * delta * 180.0f;
+	_hor_rot -= hor_delta;
+
+	if (vert_delta > 0 or hor_delta > 0)
+	{
+		LOG_INFO("%f, %f, %f", delta, vert_delta, hor_delta);
+	}
 		
 	if (input_system::btn_down(input_button::W)) _pos += _fwd * _speed * delta;
 	if (input_system::btn_down(input_button::S)) _pos -= _fwd * _speed * delta;

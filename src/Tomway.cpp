@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 	
 	tomway::ui_system ui_system(window_system);
 	bool start = false, exit_loop = false;
-	tomway::ui_system::bind_menu_callbacks([&start]() { start = true; }, [&exit_loop] { exit_loop = true; });
+	tomway::ui_system::bind_menu_callbacks([&start] { start = true; }, [&exit_loop] { exit_loop = true; });
 
 	tomway::render_system render_system(
 		window_system,
@@ -62,7 +62,6 @@ int main(int argc, char* argv[])
 	auto iteration_audio = tomway::audio_system::load_file("assets/audio/bong_001.ogg");
 
 #ifdef PERF
-	bool main_menu = false;
 	std::ifstream save_file;
 	std::string data;
 	save_file.open("test/600.json");
@@ -202,11 +201,6 @@ int main(int argc, char* argv[])
 				new_grid_size = 2500;
 				loading = true;
 			}
-			
-			if (not window_system.get_mouse_visible())
-			{
-				camera_controller.update(delta);
-			}
 		
 			if ((!locked && time_system.get_new_tick()) || step)
 			{
@@ -217,19 +211,19 @@ int main(int argc, char* argv[])
 				float iteration_vol = max(0.03f, tomway::audio_system::get_volume(music_channel) / 2);
 				tomway::audio_system::play(iteration_audio, tomway::channel_group::SFX, iteration_vol);
 			}
+			else if (not window_system.get_mouse_visible())
+			{
+				camera_controller.update(delta);
+			}
 		}
 
 		tomway::transform transform;
 		// transform.model = glm::translate(transform.model, model_pos);
 		transform.view = camera_controller.get_view_transform();
 		transform.projection = camera_controller.get_projection_transform(width, height);
-		
 		ui_system.build_ui();
-
 		if (exit_loop) break;
-		
 		render_system.draw_frame(transform);
-		
 		FrameMark;
 	}
 

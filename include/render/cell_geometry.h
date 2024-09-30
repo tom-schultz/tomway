@@ -9,6 +9,12 @@ namespace tomway
     {
     public:
         cell_geometry();
+        ~cell_geometry() = default;
+        cell_geometry(cell_geometry&) = delete;
+        cell_geometry(cell_geometry&&) = delete;
+        cell_geometry& operator=(cell_geometry const&) = delete;
+        cell_geometry& operator=(cell_geometry const&&) = delete;
+        
         void bind_cells(cell_container const* cells);
         std::vector<vertex_chunk> get_vertices(size_t max_chunk_alloc_size_bytes);
         bool is_dirty() const;
