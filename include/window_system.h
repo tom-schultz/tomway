@@ -4,7 +4,7 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
-#include "input_event.h"
+#include "input/input_event.h"
 #include "SDL_vulkan.h"
 
 namespace tomway {

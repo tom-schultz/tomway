@@ -1,4 +1,4 @@
-#include "cell_geometry.h"
+#include "render/cell_geometry.h"
 
 #include "Tracy.hpp"
 

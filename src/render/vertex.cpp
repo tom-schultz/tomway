@@ -1,4 +1,4 @@
-#include "vertex.h"
+#include "render/vertex.h"
 
 std::array<vk::VertexInputAttributeDescription, 3> tomway::vertex::get_attribute_descriptions() {
 	std::array<vk::VertexInputAttributeDescription, 3> ret{};

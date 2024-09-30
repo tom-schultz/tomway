@@ -5,8 +5,8 @@
 #include <fstream>
 
 #include "tomway_utility.h"
-#include "input_event.h"
-#include "render_system.h"
+#include "input/input_event.h"
+#include "render/render_system.h"
 #include "simulation/simulation_system.h"
 #include "time_system.h"
 #include "window_system.h"

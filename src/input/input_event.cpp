@@ -1,4 +1,4 @@
-#include "input_event.h"
+#include "input/input_event.h"
 
 tomway::input_event_type tomway::to_input_event_type(SDL_EventType const& sdl_event_type) {
 	switch (sdl_event_type)  // NOLINT(clang-diagnostic-switch-enum)
