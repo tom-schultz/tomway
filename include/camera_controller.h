@@ -4,10 +4,10 @@
 
 namespace tomway
 {
-    class CameraController
+    class camera_controller
     {
     public:
-        CameraController(glm::vec3 initial_pos, float initial_vert_rot, float initial_hor_rot);
+        camera_controller(glm::vec3 initial_pos, float initial_vert_rot, float initial_hor_rot);
         glm::mat4 get_projection_transform(uint32_t width, uint32_t height) const;
         glm::mat4 get_view_transform() const;
         void reset();

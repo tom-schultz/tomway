@@ -5,10 +5,10 @@
 
 namespace tomway
 {
-    class TimeSystem
+    class time_system
     {
     public:
-        TimeSystem(float ticks_per_sec = 60);
+        time_system(float ticks_per_sec = 60);
         float get_millis() const;
         bool get_new_tick() const;
         float new_frame();

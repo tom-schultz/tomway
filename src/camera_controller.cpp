@@ -1,12 +1,12 @@
-#include "CameraController.h"
+#include "camera_controller.h"
 
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
 #include "Tracy.hpp"
-#include "input/InputSystem.h"
+#include "input/input_system.h"
 
-tomway::CameraController::CameraController(glm::vec3 initial_pos, float initial_vert_rot, float initial_hor_rot)
+tomway::camera_controller::camera_controller(glm::vec3 initial_pos, float initial_vert_rot, float initial_hor_rot)
 	: _pos(initial_pos),
 	_pos_initial(initial_pos),
 	_hor_rot(initial_hor_rot),
@@ -17,7 +17,7 @@ tomway::CameraController::CameraController(glm::vec3 initial_pos, float initial_
 	update(0);
 }
 
-glm::mat4 tomway::CameraController::get_projection_transform(uint32_t width, uint32_t height) const
+glm::mat4 tomway::camera_controller::get_projection_transform(uint32_t width, uint32_t height) const
 {
     ZoneScoped;
 	auto transform = glm::perspective(
@@ -30,7 +30,7 @@ glm::mat4 tomway::CameraController::get_projection_transform(uint32_t width, uin
 	return transform;
 }
 
-glm::mat4 tomway::CameraController::get_view_transform() const
+glm::mat4 tomway::camera_controller::get_view_transform() const
 {
     ZoneScoped;
 	
@@ -42,7 +42,7 @@ glm::mat4 tomway::CameraController::get_view_transform() const
 	return ret;
 }
 
-void tomway::CameraController::reset()
+void tomway::camera_controller::reset()
 {
     ZoneScoped;
 	_pos = _pos_initial;
@@ -50,19 +50,19 @@ void tomway::CameraController::reset()
 	_vert_rot = _vert_rot_initial;
 }
 
-void tomway::CameraController::update(float delta)
+void tomway::camera_controller::update(float delta)
 {
     ZoneScoped;
-	glm::vec2 const mouse_vel = InputSystem::get_mouse_vel();
+	glm::vec2 const mouse_vel = input_system::get_mouse_vel();
 				
 	// Inverted
 	_vert_rot -= mouse_vel.y * delta * 180.0f;
 	_hor_rot -= mouse_vel.x * delta * 180.0f;
 		
-	if (InputSystem::btn_down(InputButton::W)) _pos += _fwd * _speed * delta;
-	if (InputSystem::btn_down(InputButton::S)) _pos -= _fwd * _speed * delta;
-	if (InputSystem::btn_down(InputButton::A)) _pos -= _right * _speed * delta;
-	if (InputSystem::btn_down(InputButton::D)) _pos += _right * _speed * delta;
+	if (input_system::btn_down(input_button::W)) _pos += _fwd * _speed * delta;
+	if (input_system::btn_down(input_button::S)) _pos -= _fwd * _speed * delta;
+	if (input_system::btn_down(input_button::A)) _pos -= _right * _speed * delta;
+	if (input_system::btn_down(input_button::D)) _pos += _right * _speed * delta;
 	
 	glm::mat4 rotation_mat(1.0f);
 	rotation_mat = glm::rotate(rotation_mat, glm::radians(_vert_rot), glm::vec3(1.0f, 0.0f, 0.0f));

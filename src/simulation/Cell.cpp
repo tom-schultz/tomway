@@ -1,29 +1,29 @@
-#include "simulation/Cell.h"
+#include "simulation/cell.h"
 
 
-tomway::Cell::Cell(size_t x, size_t y, bool alive)
+tomway::cell::cell(size_t x, size_t y, bool alive)
 	: _x(x),
 	_y(y),
 	_alive(alive)
 {
 }
 
-size_t tomway::Cell::get_x() const
+size_t tomway::cell::get_x() const
 {
 	return _x;
 }
 
-size_t tomway::Cell::get_y() const
+size_t tomway::cell::get_y() const
 {
 	return _y;
 }
 
-bool tomway::Cell::get_alive() const
+bool tomway::cell::get_alive() const
 {
 	return _alive;
 }
 
-void tomway::Cell::serialize(rapidjson::Document& doc, rapidjson::Value& cell_array) const
+void tomway::cell::serialize(rapidjson::Document& doc, rapidjson::Value& cell_array) const
 {
 	if (not _alive) return;
 
@@ -34,7 +34,7 @@ void tomway::Cell::serialize(rapidjson::Document& doc, rapidjson::Value& cell_ar
 	cell_array.PushBack(cell_value, doc.GetAllocator());
 }
 
-void tomway::Cell::set_alive(bool alive)
+void tomway::cell::set_alive(bool alive)
 {
 	_alive = alive;
 }

@@ -1,28 +1,28 @@
-#include "TimeSystem.h"
-#include "HaglUtility.h"
+#include "time_system.h"
+#include "tomway_utility.h"
 
 #include "imgui.h"
 #include "ui_system.h"
 
-tomway::TimeSystem::TimeSystem(float ticks_per_sec)
+tomway::time_system::time_system(float ticks_per_sec)
     :_last_frame_start_time(std::chrono::high_resolution_clock::now()),
     _start_time(std::chrono::high_resolution_clock::now()),
     _ticks_per_sec(ticks_per_sec)
 {
 }
 
-float tomway::TimeSystem::get_millis() const
+float tomway::time_system::get_millis() const
 {
     auto const now = std::chrono::high_resolution_clock::now();
     return std::chrono::duration<float>(now - _start_time).count();
 }
 
-bool tomway::TimeSystem::get_new_tick() const
+bool tomway::time_system::get_new_tick() const
 {
     return _new_tick;
 }
 
-float tomway::TimeSystem::new_frame()
+float tomway::time_system::new_frame()
 {
     auto const new_frame_time = std::chrono::high_resolution_clock::now();
     const float delta = std::chrono::duration<float>(new_frame_time - _last_frame_start_time).count();

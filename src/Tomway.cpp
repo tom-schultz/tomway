@@ -1,15 +1,15 @@
 ﻿// tomway.cpp : Defines the entry point for the application.
 
-#include "Tomway.h"
+#include "tomway.h"
 
 #include <fstream>
 
-#include "HaglUtility.h"
-#include "InputEvent.h"
-#include "RenderSystem.h"
-#include "simulation/SimulationSystem.h"
-#include "TimeSystem.h"
-#include "WindowSystem.h"
+#include "tomway_utility.h"
+#include "input_event.h"
+#include "render_system.h"
+#include "simulation/simulation_system.h"
+#include "time_system.h"
+#include "window_system.h"
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_RADIANS
@@ -17,33 +17,33 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Tracy.hpp"
 
-#include "CameraController.h"
+#include "camera_controller.h"
 #include "imgui.h"
 #include "nfd.h"
 #include "ui_system.h"
-#include "audio/AudioSystem.h"
-#include "input/InputSystem.h"
+#include "audio/audio_system.h"
+#include "input/input_system.h"
 
 size_t constexpr GRID_SIZE = 600;
 
 int main(int argc, char* argv[])
 {
-	tomway::SimulationSystem simulation_system;	
-	tomway::CellGeometry cell_geometry_generator;
-	tomway::WindowSystem window_system(1024, 768);
-	tomway::AudioSystem audio_system;
+	tomway::simulation_system simulation_system;	
+	tomway::cell_geometry cell_geometry_generator;
+	tomway::window_system window_system(1024, 768);
+	tomway::audio_system audio_system;
 	
 	tomway::ui_system ui_system(window_system);
 	bool start = false, exit_loop = false;
 	tomway::ui_system::bind_menu_callbacks([&start]() { start = true; }, [&exit_loop] { exit_loop = true; });
 
-	tomway::RenderSystem render_system(
+	tomway::render_system render_system(
 		window_system,
 		cell_geometry_generator);
 	
-	tomway::InputSystem input_system;
-	tomway::TimeSystem time_system(5);
-	tomway::CameraController camera_controller({0.0f, 0.0f, GRID_SIZE >= 1000.0f ? 990.0f : GRID_SIZE}, 90.0f, 0.0f);
+	tomway::input_system input_system;
+	tomway::time_system time_system(5);
+	tomway::camera_controller camera_controller({0.0f, 0.0f, GRID_SIZE >= 1000.0f ? 990.0f : GRID_SIZE}, 90.0f, 0.0f);
 
 	float delta = 0;
 	uint32_t width, height;
@@ -63,12 +63,12 @@ int main(int argc, char* argv[])
 	bool main_menu = true;
 #endif
 
-	auto music_audio = tomway::AudioSystem::stream_file("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
-	auto music_channel = tomway::AudioSystem::play(music_audio, tomway::ChannelGroup::MUSIC, 0);
-	tomway::AudioSystem::fade(music_channel, 0.2f, 10);
+	auto music_audio = tomway::audio_system::stream_file("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
+	auto music_channel = tomway::audio_system::play(music_audio, tomway::channel_group::MUSIC, 0);
+	tomway::audio_system::fade(music_channel, 0.2f, 10);
 
-	auto button_audio = tomway::AudioSystem::load_file("assets/audio/click5.ogg");
-	auto iteration_audio = tomway::AudioSystem::load_file("assets/audio/bong_001.ogg");
+	auto button_audio = tomway::audio_system::load_file("assets/audio/click5.ogg");
+	auto iteration_audio = tomway::audio_system::load_file("assets/audio/bong_001.ogg");
 	
 	while (true) {
 		ZoneScopedN("SDL_main | game loop");
@@ -82,14 +82,14 @@ int main(int argc, char* argv[])
 		delta = time_system.new_frame();
 		simulation_system.new_frame();
 		
-		if (tomway::InputSystem::btn_just_down(tomway::InputButton::ESCAPE)) tomway::ui_system::toggle_menu();
-		if (tomway::InputSystem::btn_just_up(tomway::InputButton::SPACE)) step = true;
-		if (tomway::InputSystem::btn_just_up(tomway::InputButton::L)) locked = !locked;
-		if (tomway::InputSystem::btn_just_up(tomway::InputButton::F1)) window_system.toggle_mouse_visible();
+		if (tomway::input_system::btn_just_down(tomway::input_button::ESCAPE)) tomway::ui_system::toggle_menu();
+		if (tomway::input_system::btn_just_up(tomway::input_button::SPACE)) step = true;
+		if (tomway::input_system::btn_just_up(tomway::input_button::L)) locked = !locked;
+		if (tomway::input_system::btn_just_up(tomway::input_button::F1)) window_system.toggle_mouse_visible();
 
-		if (tomway::InputSystem::btn_just_up(tomway::InputButton::R))
+		if (tomway::input_system::btn_just_up(tomway::input_button::R))
 		{
-			tomway::AudioSystem::play(button_audio, tomway::ChannelGroup::SFX, 0.2f);
+			tomway::audio_system::play(button_audio, tomway::channel_group::SFX, 0.2f);
 			simulation_system.start(0);
 			main_menu = true;
 			locked = true;
@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
 			camera_controller.reset();
 		}
 
-		if (tomway::InputSystem::btn_just_up(tomway::InputButton::F2))
+		if (tomway::input_system::btn_just_up(tomway::input_button::F2))
 		{
 			auto data = simulation_system.serialize();
 			auto save_path = tomway::get_file_location();
@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
 			save_file.close();
 		}
 
-		if (tomway::InputSystem::btn_just_up(tomway::InputButton::F3))
+		if (tomway::input_system::btn_just_up(tomway::input_button::F3))
 		{
 			auto save_path = tomway::get_file_location();
 			std::string data;
@@ -139,7 +139,7 @@ int main(int argc, char* argv[])
 		
 		if (not ui_system.is_menu_open())
 		{
-			if (tomway::InputSystem::btn_just_up(tomway::InputButton::P))
+			if (tomway::input_system::btn_just_up(tomway::input_button::P))
 			{
 				simulation_system.start(2500);
 				auto const cells = simulation_system.get_current_cells();
@@ -157,12 +157,12 @@ int main(int argc, char* argv[])
 				auto cells = simulation_system.get_current_cells();
 				cell_geometry_generator.bind_cells(cells);
 				step = false;
-				float iteration_vol = max(0.03f, tomway::AudioSystem::get_volume(music_channel) / 2);
-				tomway::AudioSystem::play(iteration_audio, tomway::ChannelGroup::SFX, iteration_vol);
+				float iteration_vol = max(0.03f, tomway::audio_system::get_volume(music_channel) / 2);
+				tomway::audio_system::play(iteration_audio, tomway::channel_group::SFX, iteration_vol);
 			}
 		}
 
-		tomway::Transform transform;
+		tomway::transform transform;
 		// transform.model = glm::translate(transform.model, model_pos);
 		transform.view = camera_controller.get_view_transform();
 		transform.projection = camera_controller.get_projection_transform(width, height);

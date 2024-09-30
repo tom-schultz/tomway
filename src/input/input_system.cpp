@@ -1,33 +1,33 @@
-#include "input/InputSystem.h"
+#include "input/input_system.h"
 
 #include <stdexcept>
 
 #include "Tracy.hpp"
 
-tomway::InputSystem* tomway::InputSystem::_inst = nullptr;
+tomway::input_system* tomway::input_system::_inst = nullptr;
 
-void tomway::InputSystem::check_system_ready()
+void tomway::input_system::check_system_ready()
 {
     if (not _inst) throw std::runtime_error("Input system not available");
 }
 
-tomway::InputSystem::InputSystem()
+tomway::input_system::input_system()
 {
     _inst = this;
 }
 
-tomway::InputSystem::~InputSystem()
+tomway::input_system::~input_system()
 {
     _inst = nullptr;
 }
 
-bool tomway::InputSystem::btn_down(InputButton const btn)
+bool tomway::input_system::btn_down(input_button const btn)
 {
     check_system_ready();
     return _inst->_button_states.at(btn).down;
 }
 
-bool tomway::InputSystem::btn_just_down(InputButton const btn)
+bool tomway::input_system::btn_just_down(input_button const btn)
 {
     ZoneScoped;
     check_system_ready();
@@ -35,7 +35,7 @@ bool tomway::InputSystem::btn_just_down(InputButton const btn)
     return state.down and state.last_down == _inst->_tick;
 }
 
-bool tomway::InputSystem::btn_just_up(InputButton const btn)
+bool tomway::input_system::btn_just_up(input_button const btn)
 {
     ZoneScoped;
     check_system_ready();
@@ -43,35 +43,35 @@ bool tomway::InputSystem::btn_just_up(InputButton const btn)
     return not state.down and state.last_up == _inst->_tick; 
 }
 
-glm::vec2 tomway::InputSystem::get_mouse_vel()
+glm::vec2 tomway::input_system::get_mouse_vel()
 {
     check_system_ready();
     return _inst->_mouse_vel;
 }
 
-void tomway::InputSystem::new_frame()
+void tomway::input_system::new_frame()
 {
     _tick++;
 }
 
-void tomway::InputSystem::process_events(std::vector<InputEvent> const& events)
+void tomway::input_system::process_events(std::vector<input_event> const& events)
 {
     ZoneScoped;
     _mouse_vel = {};
     
     for (auto const event : events)
     {
-        if (event.type == InputEventType::BUTTON_DOWN)
+        if (event.type == input_event_type::BUTTON_DOWN)
         {
             _button_states[event.button].down = true;
             _button_states[event.button].last_down = _tick;
         }
-        else if (event.type == InputEventType::BUTTON_UP)
+        else if (event.type == input_event_type::BUTTON_UP)
         {
             _button_states[event.button].down = false;
             _button_states[event.button].last_up = _tick;
         }
-        else if (event.type == InputEventType::MOUSE_MOTION)
+        else if (event.type == input_event_type::MOUSE_MOTION)
         {
             _mouse_vel.x = event.mouse_x_vel;
             _mouse_vel.y = event.mouse_y_vel;

@@ -1,18 +1,18 @@
-#include "simulation/SimulationSystem.h"
-#include "HaglUtility.h"
+#include "simulation/simulation_system.h"
+#include "tomway_utility.h"
 #include "Tracy.hpp"
 #include "ui_system.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/stringbuffer.h"
 
-tomway::SimulationSystem::SimulationSystem()
+tomway::simulation_system::simulation_system()
     : _grid_size(0),
     _cells{ { 0 }, { 0 } }
 {
 }
 
-void tomway::SimulationSystem::deserialize(std::string const& json)
+void tomway::simulation_system::deserialize(std::string const& json)
 {
     ZoneScoped;
     rapidjson::Document document;
@@ -30,18 +30,18 @@ void tomway::SimulationSystem::deserialize(std::string const& json)
     }
 }
 
-size_t tomway::SimulationSystem::get_cell_count() const
+size_t tomway::simulation_system::get_cell_count() const
 {
     return _cells[_index].size();
 }
 
-tomway::CellContainer const* tomway::SimulationSystem::get_current_cells() const
+tomway::cell_container const* tomway::simulation_system::get_current_cells() const
 {
     ZoneScoped;
     return &_cells[_index];
 }
 
-void tomway::SimulationSystem::new_frame()
+void tomway::simulation_system::new_frame()
 {
     if (_grid_size > 0)
     {
@@ -50,7 +50,7 @@ void tomway::SimulationSystem::new_frame()
     }
 }
 
-std::string tomway::SimulationSystem::serialize() const
+std::string tomway::simulation_system::serialize() const
 {
     ZoneScoped;
     rapidjson::Document document;
@@ -71,7 +71,7 @@ std::string tomway::SimulationSystem::serialize() const
     return sb.GetString();
 }
 
-void tomway::SimulationSystem::start(size_t const grid_size)
+void tomway::simulation_system::start(size_t const grid_size)
 {
     ZoneScoped;
     _grid_size = grid_size;
@@ -81,12 +81,12 @@ void tomway::SimulationSystem::start(size_t const grid_size)
     _cells[1].randomize();
 }
 
-void tomway::SimulationSystem::step_simulation()
+void tomway::simulation_system::step_simulation()
 {
     ZoneScoped;
     unsigned int const new_index = (_index + 1) % 2;
     
-    for (Cell& cell : _cells[_index])
+    for (cell& cell : _cells[_index])
     {
         size_t const x = cell.get_x();
         size_t const y = cell.get_y();
@@ -112,7 +112,7 @@ void tomway::SimulationSystem::step_simulation()
     _index = new_index;
 }
 
-inline size_t tomway::SimulationSystem::wrap(long long int val) const
+inline size_t tomway::simulation_system::wrap(long long int val) const
 {
     if (val < 0)
     {

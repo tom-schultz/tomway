@@ -5,11 +5,11 @@
 
 namespace tomway
 {
-    class AudioSystem;
+    class audio_system;
     
-    class Audio
+    class audio
     {
-        friend AudioSystem;
+        friend audio_system;
     public:
     private:
         std::shared_ptr<SoLoud::AudioSource> _impl;

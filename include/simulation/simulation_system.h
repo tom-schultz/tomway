@@ -2,17 +2,17 @@
 
 #include <string>
 
-#include "simulation/CellContainer.h"
+#include "simulation/cell_container.h"
 
 namespace tomway
 {
-    class SimulationSystem
+    class simulation_system
     {
     public:
-        SimulationSystem();
+        simulation_system();
         void deserialize(std::string const& json);
         size_t get_cell_count() const;
-        CellContainer const* get_current_cells() const;
+        cell_container const* get_current_cells() const;
         void new_frame();
         std::string serialize() const;
         void start(size_t grid_size);
@@ -21,6 +21,6 @@ namespace tomway
         inline size_t wrap(long long int val) const;
         size_t _grid_size;
         unsigned int _index = 0;
-        CellContainer _cells[2];
+        cell_container _cells[2];
     };
 }

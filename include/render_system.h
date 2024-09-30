@@ -10,11 +10,11 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include "CellGeometry.h"
+#include "cell_geometry.h"
 #include "TracyVulkan.hpp"
-#include "Transform.h"
-#include "Vertex.h"
-#include "WindowSystem.h"
+#include "transform.h"
+#include "vertex.h"
+#include "window_system.h"
 
 namespace tomway {
 	struct QueueFamilyIndices {
@@ -30,12 +30,12 @@ namespace tomway {
 		std::vector<vk::PresentModeKHR> present_modes;
 	};
 
-	class RenderSystem {
+	class render_system {
 	public:
-		RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, unsigned max_frames_in_flight = 2);
-		~RenderSystem();
+		render_system(window_system& window_system, cell_geometry& cell_geometry, unsigned max_frames_in_flight = 2);
+		~render_system();
 
-		void draw_frame(Transform const& transform);
+		void draw_frame(transform const& transform);
 		void minimized();
 		void new_frame();
 		void resize_framebuffer();
@@ -78,7 +78,7 @@ namespace tomway {
 		*/
 
 		bool _cell_buffer_dirty = true;
-		CellGeometry& _cell_geometry;
+		cell_geometry& _cell_geometry;
 		unsigned _curr_frame;
 		std::vector<vk::DescriptorSet> _descriptor_sets;
 		bool _framebuffer_resized;
@@ -96,10 +96,10 @@ namespace tomway {
 		vk::Format _swapchain_format;
 		std::vector<void*> _uniform_buffers_mapped;
 		std::vector<const char*> _validation_layers = { VALIDATION_LAYERS };
-		std::vector<VertexChunk> _vertex_chunks;
+		std::vector<vertex_chunk> _vertex_chunks;
 		std::vector<TracyVkCtx> _tracy_contexts;
 		bool _window_minimized;
-		WindowSystem& _window_system;
+		window_system& _window_system;
 
 		void create_buffer(
 			size_t size,
@@ -127,20 +127,20 @@ namespace tomway {
 		void create_swapchain();
 		void create_sync_objects();
 		void create_uniform_buffers();
-		void create_vertex_buffers(std::vector<VertexChunk> const& chunks);
+		void create_vertex_buffers(std::vector<vertex_chunk> const& chunks);
 		void create_vk_instance();
 		uint32_t find_memory_type(uint32_t type_filter, vk::MemoryPropertyFlags properties);
 		void pick_physical_device();
 		void record_command_buffer(vk::CommandBuffer& command_buffer, uint32_t image_index);
 		void recreate_swapchain();
-		void transfer_vertices(std::vector<VertexChunk> const& vertex_chunks) const;
-		void update_uniform_buffer(Transform transform);
+		void transfer_vertices(std::vector<vertex_chunk> const& vertex_chunks) const;
+		void update_uniform_buffer(transform transform);
 	};
 
 	static void copy_buffer(const vk::CommandBuffer& command_buffer, const vk::Buffer& src, const vk::Buffer& dst, vk::DeviceSize size);
 	static bool check_device_extension_support(const vk::PhysicalDevice& device, std::vector<const char*> required_device_extensions);
 	static bool check_validation_layer_support(const std::vector<const char*>& validation_layers);
-	static vk::Extent2D choose_swap_extent(const WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities);
+	static vk::Extent2D choose_swap_extent(const window_system& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities);
 	static vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR> modes);
 	static vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR> formats);
 	static vk::UniqueImageView create_image_view(const vk::Device& device, const vk::Image& image, vk::Format format, vk::ImageAspectFlags aspect_mask, uint32_t mip_levels);
@@ -153,5 +153,5 @@ namespace tomway {
 	static bool is_device_suitable(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface, const std::vector<const char*>& required_device_extensions);
 	static bool is_queue_family_complete(const QueueFamilyIndices& device_indices);
 	static std::vector<char> read_shader_bytes(const std::string& file_path);
-	static inline bool need_bigger_chunk_alloc(std::vector<VertexChunk> const& lhs, std::vector<VertexChunk> const& new_chunks);
+	static inline bool need_bigger_chunk_alloc(std::vector<vertex_chunk> const& lhs, std::vector<vertex_chunk> const& new_chunks);
 }

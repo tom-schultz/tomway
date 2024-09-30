@@ -2,8 +2,8 @@
 #include <functional>
 #include <string>
 
-#include "WindowSystem.h"
-#include "audio/Audio.h"
+#include "window_system.h"
+#include "audio/audio.h"
 #include "audio/audio_config.h"
 
 namespace tomway
@@ -24,7 +24,7 @@ namespace tomway
     class ui_system
     {
     public:
-        ui_system(WindowSystem& window_system);
+        ui_system(window_system& window_system);
         static void bind_audio_config(get_audio_config_fn get_config_fn, set_audio_config_fn set_config_fn);
         
         static void bind_menu_callbacks(
@@ -49,7 +49,7 @@ namespace tomway
         
         get_audio_config_fn _audio_config_get_fn;
         set_audio_config_fn _audio_config_set_fn;
-        Audio _button_audio;
+        audio _button_audio;
         menu_start_callback _menu_start_callback;
         menu_exit_callback _menu_exit_callback;
         get_sim_config_fn _sim_config_get_fn;

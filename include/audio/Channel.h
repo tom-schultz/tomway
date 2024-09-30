@@ -4,12 +4,12 @@
 
 namespace tomway
 {
-    class AudioSystem;
+    class audio_system;
     
-    struct Channel
+    struct channel
     {
-        friend AudioSystem;
-        bool operator<(Channel const& rhs) const;
+        friend audio_system;
+        bool operator<(channel const& rhs) const;
     private:
         operator bool() const;
         // Handle is an unsigned, and I will never have static_cast<unsigned>(-1) voices

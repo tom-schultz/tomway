@@ -4,9 +4,9 @@
 #include <iostream>
 #include <vector>
 
-#include "HaglConstants.h"
-#include "HaglUtility.h"
-#include "RenderSystem.h"
+#include "tomway_constants.h"
+#include "tomway_utility.h"
+#include "render_system.h"
 
 #include "imgui_impl_vulkan.h"
 #include "Tracy.hpp"
@@ -20,7 +20,7 @@ static void check_vk_result(VkResult err)
 		abort();
 }
 
-tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& cell_geometry, unsigned max_frames_in_flight)
+tomway::render_system::render_system(window_system& window_system, cell_geometry& cell_geometry, unsigned max_frames_in_flight)
 	: _cell_geometry(cell_geometry),
 	  _curr_frame(0),
 	  _max_frames_in_flight(max_frames_in_flight),
@@ -91,7 +91,7 @@ tomway::RenderSystem::RenderSystem(WindowSystem& window_system, CellGeometry& ce
 	}
 }
 
-tomway::RenderSystem::~RenderSystem() {
+tomway::render_system::~render_system() {
 	ImGui_ImplVulkan_Shutdown();
 
 	for (auto const ctx : _tracy_contexts) {
@@ -110,7 +110,7 @@ void tomway::copy_buffer(
 	command_buffer.copyBuffer(src, dst, copy_region);
 }
 
-void tomway::RenderSystem::create_buffer(
+void tomway::render_system::create_buffer(
 	size_t const size,
 	vk::BufferUsageFlags const usage_flags,
 	vk::SharingMode const sharing_mode,
@@ -135,7 +135,7 @@ void tomway::RenderSystem::create_buffer(
 	_device_u->bindBufferMemory(*buffer_u, *buffer_memory_u, 0);
 }
 
-void tomway::RenderSystem::create_command_buffer() {
+void tomway::render_system::create_command_buffer() {
 	_command_buffers_u = _device_u->allocateCommandBuffersUnique({
 		*_command_pool_u,
 		vk::CommandBufferLevel::ePrimary,
@@ -144,7 +144,7 @@ void tomway::RenderSystem::create_command_buffer() {
 	LOG_INFO("Command buffer created.");
 }
 
-void tomway::RenderSystem::create_command_pool() {
+void tomway::render_system::create_command_pool() {
 	auto queue_fam_indices = find_queue_families(_physical_device, *_surface_u);
 
 	_command_pool_u = _device_u->createCommandPoolUnique({
@@ -155,7 +155,7 @@ void tomway::RenderSystem::create_command_pool() {
 	LOG_INFO("Command pool created.");
 }
 
-void tomway::RenderSystem::create_depth_resources()
+void tomway::render_system::create_depth_resources()
 {
 	vk::Format const depth_format = find_depth_format(_physical_device);
 	
@@ -172,7 +172,7 @@ void tomway::RenderSystem::create_depth_resources()
 	_depth_image_view_u = create_image_view(*_device_u, *_depth_image_u, depth_format, vk::ImageAspectFlagBits::eDepth, 1);
 }
 
-void tomway::RenderSystem::create_descriptor_sets() {
+void tomway::render_system::create_descriptor_sets() {
 	// This line screams wrong at first glance - I'm taking a value in a resource handler and copying it
 	// multiple times in a vector! BUT, remember that the handler here doesn't call delete - it calls Vulkan
 	// Destroy commands. We don't actually *care* about the DescriptorSetLayout struct, it's a handle to the
@@ -182,7 +182,7 @@ void tomway::RenderSystem::create_descriptor_sets() {
 	_descriptor_sets = _device_u->allocateDescriptorSets(allocate_info);
 
 	for (uint32_t i = 0; i < _max_frames_in_flight; i++) {
-		vk::DescriptorBufferInfo buffer_info(*_uniform_buffers_u[i], 0, sizeof(Transform)); // Buffer, offset, range/size
+		vk::DescriptorBufferInfo buffer_info(*_uniform_buffers_u[i], 0, sizeof(transform)); // Buffer, offset, range/size
 
 		vk::WriteDescriptorSet descriptor_writes(
 			_descriptor_sets[i],
@@ -199,7 +199,7 @@ void tomway::RenderSystem::create_descriptor_sets() {
 	LOG_INFO("Descriptor sets created.");
 }
 
-void tomway::RenderSystem::create_descriptor_pools() {
+void tomway::render_system::create_descriptor_pools() {
 	std::array<vk::DescriptorPoolSize, 1> pool_sizes = {
 		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, _max_frames_in_flight)
 	};
@@ -226,7 +226,7 @@ void tomway::RenderSystem::create_descriptor_pools() {
 	LOG_INFO("Descriptor pools created.");
 }
 
-void tomway::RenderSystem::create_descriptor_set_layout() {
+void tomway::render_system::create_descriptor_set_layout() {
 	vk::DescriptorSetLayoutBinding transform_layout_binding(
 		0, // Binding
 		vk::DescriptorType::eUniformBuffer,
@@ -239,7 +239,7 @@ void tomway::RenderSystem::create_descriptor_set_layout() {
 	LOG_INFO("Descriptor set layout created.");
 }
 
-void tomway::RenderSystem::create_framebuffers() {
+void tomway::render_system::create_framebuffers() {
 	_framebuffers_u.resize(_image_views_u.size());
 
 	// TODO - create color and image framebuffers
@@ -264,7 +264,7 @@ void tomway::RenderSystem::create_framebuffers() {
 	LOG_INFO("Framebuffers created.");
 }
 
-void tomway::RenderSystem::create_graphics_pipeline() {
+void tomway::render_system::create_graphics_pipeline() {
 	// TODO - make this configurable, probably a list of shaders to create or something
 	std::vector<char> frag_shader_bytes = read_shader_bytes("shaders/frag.spv");
 	std::vector<char> vert_shader_bytes = read_shader_bytes("shaders/vert.spv");
@@ -285,8 +285,8 @@ void tomway::RenderSystem::create_graphics_pipeline() {
 	vk::PipelineDynamicStateCreateInfo dynamic_state({}, dynamic_states);
 
 	// Vertex input descriptions
-	auto binding_desc = Vertex::get_binding_description();
-	auto attribute_desc = Vertex::get_attribute_descriptions();
+	auto binding_desc = vertex::get_binding_description();
+	auto attribute_desc = vertex::get_attribute_descriptions();
 
 	// How we pass input to the vertex shader
 	vk::PipelineVertexInputStateCreateInfo vertex_input_state(
@@ -387,7 +387,7 @@ void tomway::RenderSystem::create_graphics_pipeline() {
 	LOG_INFO("Graphics pipeline created.");
 }
 		
-void tomway::RenderSystem::create_image_u(uint32_t width,uint32_t height, vk::Format image_format, vk::ImageTiling tiling_flags,
+void tomway::render_system::create_image_u(uint32_t width,uint32_t height, vk::Format image_format, vk::ImageTiling tiling_flags,
 	vk::ImageUsageFlagBits image_usage_flags, vk::MemoryPropertyFlagBits memory_property_flags,
 	vk::UniqueImage& image_u, vk::UniqueDeviceMemory& memory_u)
 {
@@ -420,7 +420,7 @@ void tomway::RenderSystem::create_image_u(uint32_t width,uint32_t height, vk::Fo
 	_device_u->bindImageMemory(*image_u, *memory_u, 0);
 }
 
-void tomway::RenderSystem::create_image_views() {
+void tomway::render_system::create_image_views() {
 	_image_views_u.clear();
 
 	for (auto image : _images) {
@@ -430,7 +430,7 @@ void tomway::RenderSystem::create_image_views() {
 	LOG_INFO("Image views created.");
 }
 
-void tomway::RenderSystem::create_logical_device() {
+void tomway::render_system::create_logical_device() {
 	if (_validation_layers.size() > 0 && !check_validation_layer_support(_validation_layers)) {
 		throw new std::runtime_error("Requested validation layers not available!");
 	}
@@ -467,7 +467,7 @@ void tomway::RenderSystem::create_logical_device() {
 	LOG_INFO("Logical device created.");
 }
 
-void tomway::RenderSystem::create_swapchain() {
+void tomway::render_system::create_swapchain() {
 	SwapchainSupportDetails details = {
 		_physical_device.getSurfaceCapabilitiesKHR(*_surface_u),
 		_physical_device.getSurfaceFormatsKHR(*_surface_u),
@@ -516,7 +516,7 @@ void tomway::RenderSystem::create_swapchain() {
 	LOG_INFO("Swapchain created.");
 }
 
-void tomway::RenderSystem::create_sync_objects() {
+void tomway::render_system::create_sync_objects() {
 	_image_available_sems_u.resize(_max_frames_in_flight);
 	_render_finished_sems_u.resize(_max_frames_in_flight);
 	_in_flight_fences_u.resize(_max_frames_in_flight);
@@ -530,8 +530,8 @@ void tomway::RenderSystem::create_sync_objects() {
 	LOG_INFO("Synchronization objects created.");
 }
 
-void tomway::RenderSystem::create_uniform_buffers() {
-	vk::DeviceSize constexpr buffer_size = sizeof(Transform);
+void tomway::render_system::create_uniform_buffers() {
+	vk::DeviceSize constexpr buffer_size = sizeof(transform);
 	_uniform_buffers_u.resize(_max_frames_in_flight);
 	_uniform_buffers_memory_u.resize(_max_frames_in_flight);
 	_uniform_buffers_mapped.resize(_max_frames_in_flight);
@@ -551,7 +551,7 @@ void tomway::RenderSystem::create_uniform_buffers() {
 	LOG_INFO("Uniform buffers created.");
 }
 
-void tomway::RenderSystem::create_vertex_buffers(std::vector<VertexChunk> const& chunks) {
+void tomway::render_system::create_vertex_buffers(std::vector<vertex_chunk> const& chunks) {
 	_vertex_buffers_u.clear();
 	_vertex_buffers_u.resize(chunks.size());
 	_vertex_buffers_memory_u.clear();
@@ -586,7 +586,7 @@ void tomway::RenderSystem::create_vertex_buffers(std::vector<VertexChunk> const&
 	LOG_INFO("Vertex buffers created.");
 }
 
-void tomway::RenderSystem::create_vk_instance() {
+void tomway::render_system::create_vk_instance() {
 	vk::ApplicationInfo info(
 		APP_NAME, // Application Name
 		1, // Application version
@@ -610,7 +610,7 @@ void tomway::RenderSystem::create_vk_instance() {
 	LOG_INFO("Vulkan instance created.");
 }
 
-void tomway::RenderSystem::draw_frame(Transform const& transform)
+void tomway::render_system::draw_frame(transform const& transform)
 {
 	ZoneScoped;
 	
@@ -706,7 +706,7 @@ void tomway::RenderSystem::draw_frame(Transform const& transform)
 	_curr_frame = (_curr_frame + 1) % _max_frames_in_flight;
 }
 
-uint32_t tomway::RenderSystem::find_memory_type(uint32_t type_filter, vk::MemoryPropertyFlags properties) {
+uint32_t tomway::render_system::find_memory_type(uint32_t type_filter, vk::MemoryPropertyFlags properties) {
 	auto memProperties = _physical_device.getMemoryProperties();
 
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
@@ -720,16 +720,16 @@ uint32_t tomway::RenderSystem::find_memory_type(uint32_t type_filter, vk::Memory
 	throw std::runtime_error("Failed to find a suitable memory type!");
 }
 
-void tomway::RenderSystem::minimized() {
+void tomway::render_system::minimized() {
 	_window_minimized = true;
 }
 
-void tomway::RenderSystem::new_frame()
+void tomway::render_system::new_frame()
 {
 	TracyVkCollect(_tracy_contexts[_curr_frame], *_command_buffers_u[_curr_frame]);
 }
 
-void tomway::RenderSystem::pick_physical_device() {
+void tomway::render_system::pick_physical_device() {
 	auto const physical_devices = _instance_u->enumeratePhysicalDevices();
 
 	if (physical_devices.size() == 0) {
@@ -750,7 +750,7 @@ void tomway::RenderSystem::pick_physical_device() {
 	throw new std::runtime_error("Could not find a suitable GPU!");
 }
 
-void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buffer, uint32_t image_index) {
+void tomway::render_system::record_command_buffer(vk::CommandBuffer& command_buffer, uint32_t image_index) {
 	ZoneScoped;
 	vk::CommandBufferBeginInfo beginInfo;
 	command_buffer.begin(beginInfo);
@@ -827,7 +827,7 @@ void tomway::RenderSystem::record_command_buffer(vk::CommandBuffer& command_buff
 	command_buffer.end();
 }
 
-void tomway::RenderSystem::recreate_swapchain() {
+void tomway::render_system::recreate_swapchain() {
 	ZoneScoped;
 	LOG_INFO("Resizing framebuffer!");
 	_window_system.wait_while_minimized(); // Probably unnecessary, but it's safe
@@ -844,13 +844,13 @@ void tomway::RenderSystem::recreate_swapchain() {
 	create_framebuffers();
 }
 
-inline void tomway::RenderSystem::resize_framebuffer() {
+inline void tomway::render_system::resize_framebuffer() {
 	_framebuffer_resized = true;
 }
 
 // TODO - use a different queue family for transfer operations
 // https://docs.vulkan.org/tutorial/latest/00_Introduction.html
-void tomway::RenderSystem::transfer_vertices(std::vector<VertexChunk> const& vertex_chunks) const
+void tomway::render_system::transfer_vertices(std::vector<vertex_chunk> const& vertex_chunks) const
 {
 	ZoneScoped;
 
@@ -860,7 +860,7 @@ void tomway::RenderSystem::transfer_vertices(std::vector<VertexChunk> const& ver
 	}
 }
 
-void tomway::RenderSystem::update_uniform_buffer(Transform transform) {
+void tomway::render_system::update_uniform_buffer(transform transform) {
 	ZoneScoped;
 	transform.projection[1][1] *= -1;
 	memcpy(_uniform_buffers_mapped[_curr_frame], &transform, sizeof(transform));
@@ -909,7 +909,7 @@ static bool tomway::check_validation_layer_support(const std::vector<const char*
 	return true;
 }
 
-static vk::Extent2D tomway::choose_swap_extent(const tomway::WindowSystem& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities) {
+static vk::Extent2D tomway::choose_swap_extent(const tomway::window_system& windowSystem, const vk::SurfaceCapabilitiesKHR& capabilities) {
 	if (capabilities.currentExtent.width != UINT32_MAX) {
 		return capabilities.currentExtent;
 	}
@@ -1205,7 +1205,7 @@ static std::vector<char> tomway::read_shader_bytes(const std::string& file_path)
 	return bytes;
 }
 
-inline bool tomway::need_bigger_chunk_alloc(std::vector<VertexChunk> const& curr_chunks, std::vector<VertexChunk> const& new_chunks)
+inline bool tomway::need_bigger_chunk_alloc(std::vector<vertex_chunk> const& curr_chunks, std::vector<vertex_chunk> const& new_chunks)
 {
 	if (curr_chunks.size() < new_chunks.size()) return true;
 

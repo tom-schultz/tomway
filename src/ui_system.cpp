@@ -1,16 +1,16 @@
 #include "ui_system.h"
 
-#include "HaglUtility.h"
+#include "tomway_utility.h"
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_vulkan.h"
 #include "Tracy.hpp"
-#include "WindowSystem.h"
-#include "audio/AudioSystem.h"
+#include "window_system.h"
+#include "audio/audio_system.h"
 
 tomway::ui_system* tomway::ui_system::_inst = nullptr;
 
-tomway::ui_system::ui_system(WindowSystem& window_system)
+tomway::ui_system::ui_system(window_system& window_system)
 {
     _inst = this;
 
@@ -30,7 +30,7 @@ tomway::ui_system::ui_system(WindowSystem& window_system)
 
     LOG_INFO("Initialized ImGui!");
 
-    _button_audio = AudioSystem::load_file("assets/audio/click5.ogg");
+    _button_audio = audio_system::load_file("assets/audio/click5.ogg");
 }
 
 void tomway::ui_system::bind_audio_config(get_audio_config_fn const get_config_fn, set_audio_config_fn const set_config_fn)
@@ -149,15 +149,15 @@ void tomway::ui_system::_draw_audio_menu()
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::Begin("Audio Menu", nullptr, window_flags);
 
-    auto audio_config = AudioSystem::get_audio_config();
+    auto audio_config = audio_system::get_audio_config();
     ImGui::SliderFloat("Global Volume", &audio_config.global_volume, 0.0f, 1.0f);
     ImGui::SliderFloat("Music Volume", &audio_config.music_volume, 0.0f, 1.0f);
     ImGui::SliderFloat("SFX Volume", &audio_config.sfx_volume, 0.0f, 1.0f);
-    AudioSystem::set_audio_config(audio_config);
+    audio_system::set_audio_config(audio_config);
 	
     if (ImGui::Button("Back", { 200, 50 }))
     {
-        AudioSystem::play(_button_audio, ChannelGroup::SFX, 0.2f);
+        audio_system::play(_button_audio, channel_group::SFX, 0.2f);
         _menu_state = menu_state::main_menu;
     }
 
@@ -180,14 +180,14 @@ void tomway::ui_system::_draw_main_menu()
 	
     if (ImGui::Button("Start", { 200, 50 }))
     {
-        AudioSystem::play(_button_audio, ChannelGroup::SFX, 0.2f);
+        audio_system::play(_button_audio, channel_group::SFX, 0.2f);
         _menu_open = false;
         if (_menu_start_callback) _menu_start_callback();
     }
 	
     if (ImGui::Button("Audio Settings", { 200, 50 }))
     {
-        AudioSystem::play(_button_audio, ChannelGroup::SFX, 0.2f);
+        audio_system::play(_button_audio, channel_group::SFX, 0.2f);
         _menu_state = menu_state::audio;
     }
 	

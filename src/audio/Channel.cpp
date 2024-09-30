@@ -1,11 +1,11 @@
-#include "audio/Channel.h"
+#include "audio/channel.h"
 
-bool tomway::Channel::operator<(Channel const& rhs) const
+bool tomway::channel::operator<(channel const& rhs) const
 {
     return _impl < rhs._impl;
 }
 
-tomway::Channel::operator bool() const
+tomway::channel::operator bool() const
 {
     return _impl != static_cast<SoLoud::handle>(-1);
 }

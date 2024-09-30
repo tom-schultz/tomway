@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.hpp>
 
 namespace tomway {
-	struct Vertex
+	struct vertex
 	{
 		glm::vec3 pos;
 		glm::vec3 normal;

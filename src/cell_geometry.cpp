@@ -1,8 +1,8 @@
-#include "CellGeometry.h"
+#include "cell_geometry.h"
 
 #include "Tracy.hpp"
 
-std::vector<tomway::Vertex> const tomway::CellGeometry::BASE_VERTS = {
+std::vector<tomway::vertex> const tomway::cell_geometry::BASE_VERTS = {
     // X, Y, CELL_WIDTH (Top)
     {{0.0f, 0.0f, CELL_HEIGHT}, {0.0f, 0.0f, 1.0f}, COLOR_RED},
     {{CELL_WIDTH, 0.0f, CELL_HEIGHT}, {0.0f, 0.0f, 1.0f}, COLOR_RED},
@@ -52,12 +52,12 @@ std::vector<tomway::Vertex> const tomway::CellGeometry::BASE_VERTS = {
     {{CELL_WIDTH, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, COLOR_RED},
 };
 
-tomway::CellGeometry::CellGeometry()
+tomway::cell_geometry::cell_geometry()
     : _cells(nullptr)
 {
 }
 
-void tomway::CellGeometry::bind_cells(CellContainer const* cells)
+void tomway::cell_geometry::bind_cells(cell_container const* cells)
 {
     ZoneScoped;
     _cells = cells;
@@ -65,7 +65,7 @@ void tomway::CellGeometry::bind_cells(CellContainer const* cells)
     _cells_dirty = true;
 }
 
-std::vector<VertexChunk> tomway::CellGeometry::get_vertices(size_t max_chunk_alloc_size_bytes)
+std::vector<vertex_chunk> tomway::cell_geometry::get_vertices(size_t max_chunk_alloc_size_bytes)
 {
     ZoneScoped;
     
@@ -81,7 +81,7 @@ std::vector<VertexChunk> tomway::CellGeometry::get_vertices(size_t max_chunk_all
     }
 
     // Start with the max allowed per memory allocation
-    size_t verts_per_chunk = max_chunk_alloc_size_bytes / sizeof(Vertex);
+    size_t verts_per_chunk = max_chunk_alloc_size_bytes / sizeof(vertex);
     // Get rid of the remainder through integer division, then multiply up
     verts_per_chunk = verts_per_chunk / BASE_VERTS.size() * BASE_VERTS.size();
     size_t const max_verts_in_container = _cells->size() * BASE_VERTS.size();
@@ -130,7 +130,7 @@ std::vector<VertexChunk> tomway::CellGeometry::get_vertices(size_t max_chunk_all
 
     {
         ZoneScopedN("tomway::CellGeometry::get_vertices | Cell iteration");
-        for (Cell const& cell : *_cells)
+        for (cell const& cell : *_cells)
         {
             if (not cell._alive) continue;
             
@@ -154,8 +154,8 @@ std::vector<VertexChunk> tomway::CellGeometry::get_vertices(size_t max_chunk_all
                 _chunks.push_back({
                     _vertices.data() + verts_acquired - verts_per_chunk,
                     verts_curr_chunk,
-                    verts_curr_chunk * sizeof(Vertex),
-                    verts_per_chunk * sizeof(Vertex)});
+                    verts_curr_chunk * sizeof(vertex),
+                    verts_per_chunk * sizeof(vertex)});
                     
                 verts_curr_chunk = 0;
             }
@@ -166,8 +166,8 @@ std::vector<VertexChunk> tomway::CellGeometry::get_vertices(size_t max_chunk_all
             _chunks.push_back({
                 _vertices.data() + verts_acquired - verts_curr_chunk,
                 verts_curr_chunk,
-                verts_curr_chunk * sizeof(Vertex),
-                verts_per_chunk * sizeof(Vertex)});
+                verts_curr_chunk * sizeof(vertex),
+                verts_per_chunk * sizeof(vertex)});
         }
         
         _cells_dirty = false;
@@ -176,7 +176,7 @@ std::vector<VertexChunk> tomway::CellGeometry::get_vertices(size_t max_chunk_all
     return _chunks;
 }
 
-bool tomway::CellGeometry::is_dirty() const
+bool tomway::cell_geometry::is_dirty() const
 {
     return _cells_dirty;
 }

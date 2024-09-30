@@ -2,12 +2,12 @@
 #include "rapidjson/document.h"
 
 namespace tomway {
-	class CellGeometry;
+	class cell_geometry;
 
-	class Cell
+	class cell
 	{
 	public:
-		Cell(size_t x, size_t y, bool alive);
+		cell(size_t x, size_t y, bool alive);
 		size_t get_x() const;
 		size_t get_y() const;
 		bool get_alive() const;
@@ -16,6 +16,6 @@ namespace tomway {
 	private:
 		size_t _x, _y;
 		bool _alive;
-        friend CellGeometry;
+        friend cell_geometry;
 	};
 }

@@ -1,9 +1,9 @@
 #pragma once
-#include "Vertex.h"
+#include "vertex.h"
 
-struct VertexChunk
+struct vertex_chunk
 {
-    tomway::Vertex const* vertices;
+    tomway::vertex const* vertices;
     size_t vertex_count;
     size_t data_size_bytes;
     size_t max_size_bytes;

@@ -7,9 +7,9 @@
 #define LOG_ERROR(msg, ...) SDL_LogError(0, msg, ##__VA_ARGS__)
 
 namespace tomway {
-	class NotImplementedException : public std::logic_error {
+	class not_implemented_exception : public std::logic_error {
 	public:
-		NotImplementedException();
+		not_implemented_exception();
 	};
 
 	template<typename ... Args>

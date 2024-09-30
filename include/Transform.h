@@ -4,13 +4,13 @@
 
 namespace tomway {
 	// https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
-	struct Transform
+	struct transform
 	{
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 projection;
 
-		Transform();
+		transform();
 	};
 }
 
