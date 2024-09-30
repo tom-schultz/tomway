@@ -13,8 +13,9 @@ namespace tomway
         void deserialize(std::string const& json);
         size_t get_cell_count() const;
         CellContainer const* get_current_cells() const;
+        void new_frame();
         std::string serialize() const;
-        void start(size_t const grid_size);
+        void start(size_t grid_size);
         void step_simulation();
     private:
         inline size_t wrap(long long int val) const;

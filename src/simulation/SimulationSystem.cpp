@@ -1,6 +1,7 @@
 #include "simulation/SimulationSystem.h"
 #include "HaglUtility.h"
 #include "Tracy.hpp"
+#include "ui_system.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/stringbuffer.h"
@@ -38,6 +39,15 @@ tomway::CellContainer const* tomway::SimulationSystem::get_current_cells() const
 {
     ZoneScoped;
     return &_cells[_index];
+}
+
+void tomway::SimulationSystem::new_frame()
+{
+    if (_grid_size > 0)
+    {
+        auto grid_string = string_format("Grid size: %zu x %zu", _grid_size, _grid_size);
+        ui_system::add_debug_text(grid_string);
+    }
 }
 
 std::string tomway::SimulationSystem::serialize() const

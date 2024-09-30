@@ -32,7 +32,7 @@ namespace tomway
             menu_exit_callback const& menu_exit_callback);
         
         static void bind_sim_config(get_sim_config_fn get_config_fn, set_sim_config_fn set_config_fn);
-        static void debug_text(std::string const& text);
+        static void add_debug_text(std::string const& text);
         static void hide_loading_screen();
         static void hide_menu();
         static void show_loading_screen();
@@ -54,10 +54,12 @@ namespace tomway
         menu_exit_callback _menu_exit_callback;
         get_sim_config_fn _sim_config_get_fn;
         set_sim_config_fn _sim_config_set_fn;
+        std::vector<std::string> _debug_texts;
         
         bool _menu_open = false;
         menu_state _menu_state = menu_state::main_menu;
 
+        void _draw_debug();
         void _draw_menu();
         void _draw_audio_menu();
         void _draw_main_menu();

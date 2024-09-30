@@ -2,6 +2,7 @@
 #include "HaglUtility.h"
 
 #include "imgui.h"
+#include "ui_system.h"
 
 tomway::TimeSystem::TimeSystem(float ticks_per_sec)
     :_last_frame_start_time(std::chrono::high_resolution_clock::now()),
@@ -44,11 +45,8 @@ float tomway::TimeSystem::new_frame()
     {
         _tick_timer = 0;
     }
-    
-    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-    bool open = true;
-    ImGui::Begin("FPS", &open, window_flags);
-    ImGui::Text("FPS: %d", _fps);
-    ImGui::End();
+
+    auto const fps_string = string_format("FPS: %zu", _fps);
+    ui_system::add_debug_text(fps_string);
     return delta;
 }

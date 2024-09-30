@@ -726,8 +726,6 @@ void tomway::RenderSystem::minimized() {
 
 void tomway::RenderSystem::new_frame()
 {
-	ImGui_ImplVulkan_NewFrame();
-	ImGui::NewFrame();
 	TracyVkCollect(_tracy_contexts[_curr_frame], *_command_buffers_u[_curr_frame]);
 }
 

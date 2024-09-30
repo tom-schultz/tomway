@@ -80,6 +80,7 @@ int main(int argc, char* argv[])
 		input_system.new_frame();
 		input_system.process_events(window_events);
 		delta = time_system.new_frame();
+		simulation_system.new_frame();
 		
 		if (tomway::InputSystem::btn_just_down(tomway::InputButton::ESCAPE)) tomway::ui_system::toggle_menu();
 		if (tomway::InputSystem::btn_just_up(tomway::InputButton::SPACE)) step = true;
