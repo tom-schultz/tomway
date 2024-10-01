@@ -553,35 +553,44 @@ void tomway::render_system::create_uniform_buffers() {
 }
 
 void tomway::render_system::create_vertex_buffers(std::vector<vertex_chunk> const& chunks) {
-	_vertex_buffers_u.clear();
-	_vertex_buffers_u.resize(chunks.size());
-	_vertex_buffers_memory_u.clear();
-	_vertex_buffers_memory_u.resize(chunks.size());
-	_vertex_staging_buffers_u.clear();
-	_vertex_staging_buffers_u.resize(chunks.size());
-	_vertex_staging_buffers_memory_u.clear();
-	_vertex_staging_buffers_memory_u.resize(chunks.size());
-	_vertex_staging_memory.resize(chunks.size());
-	
-	for (size_t i = 0; i < chunks.size(); i++)
+	ZoneScoped;
+
 	{
-		create_buffer(
-			chunks[i].max_size_bytes,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eExclusive,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-			_vertex_staging_buffers_u[i],
-			_vertex_staging_buffers_memory_u[i]);
+		ZoneScopedN("tomway::render_system::create_vertex_buffers | Cleanup old vertex buffers");
+		_vertex_buffers_u.clear();
+		_vertex_buffers_u.resize(chunks.size());
+		_vertex_buffers_memory_u.clear();
+		_vertex_buffers_memory_u.resize(chunks.size());
+		_vertex_staging_buffers_u.clear();
+		_vertex_staging_buffers_u.resize(chunks.size());
+		_vertex_staging_buffers_memory_u.clear();
+		_vertex_staging_buffers_memory_u.resize(chunks.size());
+		_vertex_staging_memory.resize(chunks.size());
+	}
 
-		_vertex_staging_memory[i] = _device_u->mapMemory(*_vertex_staging_buffers_memory_u[i], 0, chunks[i].max_size_bytes);
+	{
+		ZoneScopedN("tomway::render_system::create_vertex_buffers | Create new vertex buffers");
+		
+		for (size_t i = 0; i < chunks.size(); i++)
+		{
+			create_buffer(
+				chunks[i].max_size_bytes,
+				vk::BufferUsageFlagBits::eTransferSrc,
+				vk::SharingMode::eExclusive,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+				_vertex_staging_buffers_u[i],
+				_vertex_staging_buffers_memory_u[i]);
 
-		create_buffer(
-			chunks[i].max_size_bytes,
-			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::SharingMode::eExclusive,
-			vk::MemoryPropertyFlagBits::eDeviceLocal,
-			_vertex_buffers_u[i],
-			_vertex_buffers_memory_u[i]);
+			_vertex_staging_memory[i] = _device_u->mapMemory(*_vertex_staging_buffers_memory_u[i], 0, chunks[i].max_size_bytes);
+
+			create_buffer(
+				chunks[i].max_size_bytes,
+				vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+				vk::SharingMode::eExclusive,
+				vk::MemoryPropertyFlagBits::eDeviceLocal,
+				_vertex_buffers_u[i],
+				_vertex_buffers_memory_u[i]);
+		}
 	}
 	
 	LOG_INFO("Vertex buffers created.");
@@ -616,13 +625,13 @@ void tomway::render_system::draw_frame(transform const& transform)
 	ZoneScoped;
 	
 	if (_window_minimized) {
-		ZoneScopedN("tomway::RenderSystem::draw_frame | minimized wait");
+		ZoneScopedN("tomway::render_system::draw_frame | minimized wait");
 		_window_system.wait_while_minimized();
 		_window_minimized = false;
 	}
 
 	if (_cell_geometry.is_dirty()) {
-		ZoneScopedN("tomway::RenderSystem::draw_frame | Vertex transfer");
+		ZoneScopedN("tomway::render_system::draw_frame | Vertex transfer");
 	
 		auto const& vertex_chunks = _cell_geometry.get_vertices(_max_mem_allocation_size);
 
@@ -638,7 +647,7 @@ void tomway::render_system::draw_frame(transform const& transform)
 	}
 
 	{
-		ZoneScopedN("tomway::RenderSystem::draw_frame | Fence wait");
+		ZoneScopedN("tomway::render_system::draw_frame | Fence wait");
 		_device_u->waitForFences(*_in_flight_fences_u[_curr_frame], vk::True, UINT64_MAX);
 	}
 	
@@ -646,7 +655,7 @@ void tomway::render_system::draw_frame(transform const& transform)
 	uint32_t imageIndex;
 
 	{
-		ZoneScopedN("tomway::RenderSystem::draw_frame | Image acquisition");
+		ZoneScopedN("tomway::render_system::draw_frame | Image acquisition");
 		
 		// TODO - figure out how to make this faster when in FIFO mode due to integrated graphics or whatever
 		// https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
@@ -663,7 +672,7 @@ void tomway::render_system::draw_frame(transform const& transform)
 	}
 
 	{
-		ZoneScopedN("tomway::RenderSystem::draw_frame | Fence and command buffer reset");
+		ZoneScopedN("tomway::render_system::draw_frame | Fence and command buffer reset");
 		_device_u->resetFences(*_in_flight_fences_u[_curr_frame]);
 		_command_buffers_u[_curr_frame]->reset();
 	}
@@ -673,7 +682,7 @@ void tomway::render_system::draw_frame(transform const& transform)
 	vk::Flags<vk::PipelineStageFlagBits> waitDstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
 	{
-		ZoneScopedN("tomway::RenderSystem::draw_frame | Submit");
+		ZoneScopedN("tomway::render_system::draw_frame | Submit");
 		
 		vk::SubmitInfo submitInfo({
 			*_image_available_sems_u[_curr_frame],
@@ -685,7 +694,7 @@ void tomway::render_system::draw_frame(transform const& transform)
 	}
 
 	{
-		ZoneScopedN("tomway::RenderSystem::draw_frame | Present");
+		ZoneScopedN("tomway::render_system::draw_frame | Present");
 		
 		vk::PresentInfoKHR presentInfo({
 			*_render_finished_sems_u[_curr_frame],

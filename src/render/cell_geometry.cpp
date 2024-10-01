@@ -129,7 +129,7 @@ std::vector<vertex_chunk> tomway::cell_geometry::get_vertices(size_t max_chunk_a
     _vertices[5].color = COLOR_DB;
 
     {
-        ZoneScopedN("tomway::CellGeometry::get_vertices | Cell iteration");
+        ZoneScopedN("tomway::cell_geometry::get_vertices | Cell iteration");
         for (cell const& cell : *_cells)
         {
             if (not cell._alive) continue;

@@ -18,7 +18,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{4c007785-5282-4ad7-9b20-a18f3c92d8bb}</ProjectGuid>
-    <RootNamespace>hagl</RootNamespace>
+    <RootNamespace>tomway</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

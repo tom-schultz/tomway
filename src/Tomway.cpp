@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
 
 	auto music_audio = tomway::audio_system::stream_file("assets/audio/HoliznaCC0 - Cosmic Waves.mp3");
 	auto music_channel = tomway::audio_system::play(music_audio, tomway::channel_group::MUSIC, 0);
-	tomway::audio_system::fade(music_channel, 0.2f, 10);
+	tomway::audio_system::fade(music_channel, 0.2f, 60);
 
 	auto button_audio = tomway::audio_system::load_file("assets/audio/click5.ogg");
 	auto iteration_audio = tomway::audio_system::load_file("assets/audio/bong_001.ogg");
