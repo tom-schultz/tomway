@@ -5,6 +5,7 @@
 
 #include "tomway_utility.h"
 #include "Tracy.hpp"
+#include "ui_system.h"
 #include "input/input_system.h"
 
 tomway::camera_controller::camera_controller(glm::vec3 initial_pos, float initial_vert_rot, float initial_hor_rot)
@@ -51,31 +52,26 @@ void tomway::camera_controller::reset()
 	_vert_rot = _vert_rot_initial;
 }
 
-void tomway::camera_controller::update(float delta)
+void tomway::camera_controller::update(float time_delta)
 {
     ZoneScoped;
-	glm::vec2 mouse_vel = input_system::get_mouse_vel();
+	glm::vec2 mouse_delta = input_system::get_mouse_delta();
 
-	if (mouse_vel != glm::vec2())
+	if (mouse_delta != glm::vec2())
 	{
-		mouse_vel = glm::normalize(mouse_vel);
+		mouse_delta = glm::normalize(mouse_delta);
 	}
-				
+	
 	// Inverted
-	auto vert_delta = mouse_vel.y * delta * 180.0f;
+	auto vert_delta = mouse_delta.y * time_delta * 180.0f;
 	_vert_rot -= vert_delta;
-	auto hor_delta = mouse_vel.x * delta * 180.0f;
+	auto hor_delta = mouse_delta.x * time_delta * 180.0f;
 	_hor_rot -= hor_delta;
-
-	if (vert_delta > 0 or hor_delta > 0)
-	{
-		LOG_INFO("%f, %f, %f", delta, vert_delta, hor_delta);
-	}
-		
-	if (input_system::btn_down(input_button::W)) _pos += _fwd * _speed * delta;
-	if (input_system::btn_down(input_button::S)) _pos -= _fwd * _speed * delta;
-	if (input_system::btn_down(input_button::A)) _pos -= _right * _speed * delta;
-	if (input_system::btn_down(input_button::D)) _pos += _right * _speed * delta;
+	ui_system::add_debug_text(string_format("Mouse Rotation: (%f, %f)", _hor_rot, _vert_rot));
+	if (input_system::btn_down(input_button::W)) _pos += _fwd * _speed * time_delta;
+	if (input_system::btn_down(input_button::S)) _pos -= _fwd * _speed * time_delta;
+	if (input_system::btn_down(input_button::A)) _pos -= _right * _speed * time_delta;
+	if (input_system::btn_down(input_button::D)) _pos += _right * _speed * time_delta;
 	
 	glm::mat4 rotation_mat(1.0f);
 	rotation_mat = glm::rotate(rotation_mat, glm::radians(_vert_rot), glm::vec3(1.0f, 0.0f, 0.0f));

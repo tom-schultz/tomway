@@ -28,7 +28,7 @@ namespace tomway
         static bool btn_down(input_button btn);
         static bool btn_just_down(input_button btn);
         static bool btn_just_up(input_button btn);
-        static glm::vec2 get_mouse_vel();
+        static glm::vec2 get_mouse_delta();
         void new_frame();
         void process_events(std::vector<input_event> const& events);
     private:

@@ -11,7 +11,7 @@ namespace tomway
         glm::mat4 get_projection_transform(uint32_t width, uint32_t height) const;
         glm::mat4 get_view_transform() const;
         void reset();
-        void update(float delta);
+        void update(float time_delta);
     private:
         glm::vec3 _pos, _pos_initial;
         glm::vec3 _right = {}, _fwd = {}, _up = {};

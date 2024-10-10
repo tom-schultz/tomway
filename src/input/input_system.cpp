@@ -44,7 +44,7 @@ bool tomway::input_system::btn_just_up(input_button const btn)
     return not state.down and state.last_up == _inst->_tick; 
 }
 
-glm::vec2 tomway::input_system::get_mouse_vel()
+glm::vec2 tomway::input_system::get_mouse_delta()
 {
     check_system_ready();
     return _inst->_mouse_vel;
@@ -59,6 +59,7 @@ void tomway::input_system::process_events(std::vector<input_event> const& events
 {
     ZoneScoped;
     _mouse_vel = {};
+    size_t mouse_motion_events = 0;
     
     for (auto const event : events)
     {
@@ -74,8 +75,14 @@ void tomway::input_system::process_events(std::vector<input_event> const& events
         }
         else if (event.type == input_event_type::MOUSE_MOTION)
         {
-            _mouse_vel.x = event.mouse_x_vel;
-            _mouse_vel.y = event.mouse_y_vel;
+            _mouse_vel.x += event.mouse_x_vel;
+            _mouse_vel.y += event.mouse_y_vel;
+            mouse_motion_events++;
         }
+    }
+
+    if (mouse_motion_events > 1)
+    {
+        LOG_INFO("Mouse motion events: %zu", mouse_motion_events);
     }
 }

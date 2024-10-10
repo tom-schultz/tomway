@@ -11,12 +11,6 @@ tomway::time_system::time_system(float ticks_per_sec)
 {
 }
 
-float tomway::time_system::get_millis() const
-{
-    auto const now = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration<float>(now - _start_time).count();
-}
-
 bool tomway::time_system::get_new_tick() const
 {
     return _new_tick;

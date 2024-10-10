@@ -15,7 +15,6 @@ namespace tomway
         time_system& operator=(time_system const&) = delete;
         time_system& operator=(time_system const&&) = delete;
         
-        float get_millis() const;
         bool get_new_tick() const;
         float new_frame();
     private:

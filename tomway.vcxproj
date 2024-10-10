@@ -198,6 +198,7 @@
     <ClCompile Include="src\audio\audio_system.cpp" />
     <ClCompile Include="src\audio\channel.cpp" />
     <ClCompile Include="src\camera_controller.cpp" />
+    <ClCompile Include="src\engine.cpp" />
     <ClCompile Include="src\input\input_event.cpp" />
     <ClCompile Include="src\render\cell_geometry.cpp" />
     <ClCompile Include="src\render\render_system.cpp" />
@@ -222,6 +223,7 @@
     <ClInclude Include="include\audio\audio_config.h" />
     <ClInclude Include="include\audio\channel.h" />
     <ClInclude Include="include\camera_controller.h" />
+    <ClInclude Include="include\engine.h" />
     <ClInclude Include="include\input\input_event.h" />
     <ClInclude Include="include\render\cell_geometry.h" />
     <ClInclude Include="include\render\render_system.h" />
